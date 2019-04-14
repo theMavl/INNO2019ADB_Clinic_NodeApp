@@ -1,5 +1,5 @@
 {
-  "name": "Clinic Management System",
+  "name": "clinic_management_system",
   "thumbnail": "thumbnail.png",
   "version": "1.1.0",
   "description": "A Clinic Management System working on Foxx framework",
