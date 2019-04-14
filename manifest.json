@@ -1,17 +1,17 @@
 {
-  "name": "geo-example-s2",
+  "name": "Clinic Management System",
   "thumbnail": "thumbnail.png",
   "version": "1.1.0",
-  "description": "A minimalistic geo example using Foxx and leaflet.",
+  "description": "A Clinic Management System working on Foxx framework",
   "repository": {
     "type": "git",
-    "url": "https://github.com/arangodb-foxx/demo-geo-s2.git"
+    "url": "https://github.com/theMavl/INNO2019ADB_Clinic_NodeApp.git"
   },
-  "author": "ArangoDB GmbH",
+  "author": "B17-08-04",
   "contributors": [
     {
-      "name": "Heiko Kernbach",
-      "email": "heiko@arangodb.com"
+      "name": "Name",
+      "email": "email"
     }
   ],
   "keywords": [
