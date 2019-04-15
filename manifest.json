@@ -1,30 +1,27 @@
 {
-  "name": "clinic_management_system",
-  "thumbnail": "thumbnail.png",
-  "version": "1.1.0",
+  "name": "Clinic",
+  "version": "0.0.1",
   "description": "A Clinic Management System working on Foxx framework",
   "repository": {
     "type": "git",
     "url": "https://github.com/theMavl/INNO2019ADB_Clinic_NodeApp.git"
   },
+  "engines": {
+    "arangodb": "^3.0.0"
+  },
   "author": "B17-08-04",
   "contributors": [
     {
-      "name": "Name",
+      "name": "Mavl",
       "email": "email"
     }
   ],
-  "keywords": [
-    "ui-template",
-    "geo"
-  ],
-  "engines": {
-    "arangodb": "3.4"
-  },
+  "license": "Apache 2",
+  "main": "main.js",
   "scripts": {
-    "setup": "scripts/setup.js"
+    "setup": "scripts/setup.js",
+    "teardown": "scripts/teardown.js"
   },
-  "main": "index.js",
   "files": {
     "/index.html": "build/index.html",
     "/app.js": "build/app.js",
@@ -34,4 +31,5 @@
     "/images": "frontend/img"
   },
   "defaultDocument": "index.html"
+  "tests": "test/**/*.js"
 }
