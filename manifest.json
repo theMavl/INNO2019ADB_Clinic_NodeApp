@@ -30,6 +30,6 @@
     "/img": "frontend/img",
     "/images": "frontend/img"
   },
-  "defaultDocument": "index.html"
+  "defaultDocument": "index.html",
   "tests": "test/**/*.js"
 }
