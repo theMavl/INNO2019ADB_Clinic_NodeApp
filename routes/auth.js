@@ -8,6 +8,8 @@ const users = module.context.collection('users');
 const router = createRouter();
 module.exports = router;
 
+router.tag('auth');
+
 router.post('/login', function (req, res) {
   const username = req.body.username;
   const user = users.firstExample({username});

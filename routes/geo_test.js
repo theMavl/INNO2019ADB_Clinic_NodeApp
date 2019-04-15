@@ -16,6 +16,8 @@ module.exports = router;
 
 module.context.use(router);
 
+router.tag('geo_test');
+
 router.get('/restaurants', function (req, res) {
     try {
         // const data = foxxColl.document(req.pathParams.key);
