@@ -12,8 +12,9 @@ const neighborhoods = db._collection('neighborhoods');
 const createRouter = require('@arangodb/foxx/router');
 const router = createRouter();
 
-module.context.use(router);
+module.exports = router;
 
+module.context.use(router);
 
 router.get('/restaurants', function (req, res) {
     try {

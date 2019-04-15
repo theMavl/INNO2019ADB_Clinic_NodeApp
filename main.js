@@ -2,7 +2,7 @@
 
 module.context.use('/patients', require('./routes/patients'), 'patients');
 module.context.use('/auth', require('./routes/auth'), 'auth');
-// smodule.context.use('/geo_test', require('./routes/geo_test'), 'geo_test');
+module.context.use('/geo_test', require('./routes/geo_test'), 'geo_test');
 
 const sessionsMiddleware = require('@arangodb/foxx/sessions');
 const sessions = sessionsMiddleware({

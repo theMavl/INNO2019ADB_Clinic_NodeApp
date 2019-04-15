@@ -1,6 +1,7 @@
 {
   "name": "Clinic",
   "version": "0.0.1",
+  "thumbnail": "thumbnail.png",
   "description": "A Clinic Management System working on Foxx framework",
   "repository": {
     "type": "git",
