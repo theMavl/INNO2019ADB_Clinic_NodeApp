@@ -1,14 +1,22 @@
 'use strict';
 const db = require('@arangodb').db;
 const documentCollections = [
-  "patients",
+  "sessions",
+  "Appointments",
+  "HomeRemedies",
+  "LeaveApply",
+  "Patients",
+  "Staff",
+  "Tips",
+  "Visitors",
   "users",
-  "usergroups",
-  "sessions"
+  "usergroups"
 ];
 const edgeCollections = [
   "hasPerm",
-  "memberOf"
+  "memberOf",
+  "patient_profile",
+  "staff_profile"
 ];
 
 for (const localName of documentCollections) {

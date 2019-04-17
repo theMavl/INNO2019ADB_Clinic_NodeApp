@@ -6,10 +6,18 @@ module.exports = {
   schema: {
     // Describe the attributes with joi here
     _key: joi.string(),
-    name: joi.string().required(),
-    dob: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
-    medical: joi.array().optional(),
-    billing: joi.array().optional()
+    first_name: joi.string().required(),
+    last_name: joi.string().required(),
+    birth_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
+    ssn: joi.string().regex(/^\d{3}-\d{2}-\d{4}$/).required(),
+    email: joi.string().email({ minDomainAtoms: 2 }),
+    address: joi.object().keys( {
+      zip: joi.string().required(),
+      country: joi.string().required(),
+      city: joi.string().required(),
+      street: joi.string().required(),
+      building: joi.string().required()
+    })
   },
   forClient(obj) {
     // Implement outgoing transformations here

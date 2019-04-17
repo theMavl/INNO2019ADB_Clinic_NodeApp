@@ -11,6 +11,7 @@ const Patient = require('../models/patient');
 
 const patients = module.context.collection('patients');
 const perms = module.context.collection('hasPerm');
+const patient_profile = module.context.collection('patient_profile');
 const keySchema = joi.string().required()
 .description('The key of the patient');
 
@@ -40,11 +41,35 @@ router.get(restrict('view_patients'), function (req, res) {
   Retrieves a list of all patients.
 `);
 
+router.post('/create_patient_profile', function (req, res) {
+  const patient = req.body;
+  let meta;
+  try {
+    meta = patients.save(patient);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_DUPLICATE) {
+      throw httpError(HTTP_CONFLICT, e.message);
+    }
+    throw e;
+  }
+  Object.assign(patient, meta);
+  patient_profile.save({_from: req.user._id, _to: patient._id, name: 'change_patients'});
+  patient.save({_from: req.user._id, _to: patient._id, name: 'remove_patients'});
+  res.status(201);
+  res.set('location', req.makeAbsolute(
+    req.reverse('detail', {key: patient._key})
+  ));
+  res.send(patient);
+})
+.body(Patient, 'The patient to create.')
+.response(201, Patient, 'The created patient profile.')
+.error(HTTP_CONFLICT, 'The patient already exists.')
+.description('Create personal patient account.');
 
 router.post(restrict('add_patients'), function (req, res) {
   const patient = req.body;
-  if (!hasPerm(req.user, 'access_patients_billing')) delete patient.billing;
-  if (!hasPerm(req.user, 'access_patients_medical')) delete patient.medical;
+  // if (!hasPerm(req.user, 'access_patients_billing')) delete patient.billing;
+  // if (!hasPerm(req.user, 'access_patients_medical')) delete patient.medical;
   let meta;
   try {
     meta = patients.save(patient);

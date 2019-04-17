@@ -1,12 +1,20 @@
 'use strict';
 const db = require('@arangodb').db;
 const collections = [
-  "patients",
+  "sessions",
+  "Appointments",
+  "HomeRemedies",
+  "LeaveApply",
+  "Patients",
+  "Staff",
+  "Tips",
+  "Visitors",
   "users",
   "usergroups",
-  "sessions",
   "hasPerm",
-  "memberOf"
+  "memberOf",
+  "patient_profile",
+  "staff_profile"
 ];
 
 for (const localName of collections) {
