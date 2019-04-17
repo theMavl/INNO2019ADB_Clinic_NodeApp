@@ -1,6 +1,8 @@
 'use strict';
 const _ = require('lodash');
 const joi = require('joi');
+const Enumerators = require('../models/enumerators');
+
 
 module.exports = {
   schema: {
@@ -9,7 +11,7 @@ module.exports = {
     leave_reason: joi.string().required(),
     beginning_date: joi.date().required(),
     ending_date: joi.date().required(),
-    status: joi.string().allow('New', 'Approved', 'Rejected'),
+    status: joi.string().allow(Enumerators.leave_apply_status),
     _key: joi.string()
   },
   forClient(obj) {

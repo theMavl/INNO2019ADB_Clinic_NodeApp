@@ -1,25 +1,7 @@
 'use strict';
 const _ = require('lodash');
 const joi = require('joi');
-const staff_designations = ["nurse", "compounder", "cashier", "receptionist", "admin", "doctor"];
-const doctor_designations = ['', 'Allergist', 'Anaesthesiologist', 'Andrologist', 'Cardiologist',
-                       'Cardiac Electrophysiologist', 'Dermatologist', 'Emergency Room (ER) Doctors',
-                       'Endocrinologist', 'Epidemiologist', 'Family Medicine Physician', 'Gastroenterologist',
-                       'Geriatrician', 'Hyperbaric Physician', 'Hematologist', 'Hepatologist', 'Immunologist',
-                       'Infectious Disease Specialist', 'Intensivist', 'Internal Medicine Specialist',
-                       'Maxillofacial Surgeon / Oral Surgeon', 'Medical Examiner', 'Medical Geneticist',
-                       'Neonatologist', 'Nephrologist', 'Neurologist', 'Neurosurgeon',
-                       'Nuclear Medicine Specialist', 'Obstetrician/Gynecologist (OB/GYN)',
-                       'Occupational Medicine Specialist', 'Oncologist', 'Ophthalmologist',
-                       'Orthopedic Surgeon / Orthopedist', 'Otolaryngologist (also ENT Specialist)',
-                       'Parasitologist', 'Pathologist', 'Perinatologist', 'Periodontist', 'Pediatrician',
-                       'Physiatrist', 'Plastic Surgeon', 'Psychiatrist', 'Pulmonologist', 'Radiologist',
-                       'Rheumatologist', 'Sleep Doctor / Sleep Disorders Specialist',
-                       'Spinal Cord Injury Specialist', 'Sports Medicine Specialist', 'Surgeon', 'Thoracic Surgeon',
-                       'Urologist', 'Vascular Surgeon', 'Veterinarian', 'Acupuncturist', 'Audiologist',
-                       'Ayurvedic Practioner', 'Chiropractor', 'Diagnostician', 'Homeopathic Doctor',
-                       'Microbiologist', 'Naturopathic Doctor', 'Palliative care specialist', 'Pharmacist',
-                       'Physiotherapist', 'Podiatrist / Chiropodist', 'Registered Massage Therapist'];
+
 
 module.exports = {
   schema: {
