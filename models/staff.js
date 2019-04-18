@@ -1,6 +1,8 @@
 'use strict';
 const _ = require('lodash');
 const joi = require('joi');
+const Enumerators = require('../models/enumerators');
+
 
 
 module.exports = {
@@ -19,8 +21,8 @@ module.exports = {
       street: joi.string().required(),
       building: joi.string().required()
     }),
-    designation: joi.string().allow(staff_designations),
-    doctor_designation: joi.string().allow(doctor_designations)
+    designation: joi.string().allow(Enumerators.staff_designations),
+    doctor_designation: joi.string().allow(Enumerators.doctor_designations)
   },
   forClient(obj) {
     // Implement outgoing transformations here
