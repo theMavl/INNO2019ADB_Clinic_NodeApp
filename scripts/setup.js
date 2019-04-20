@@ -9,14 +9,12 @@ const documentCollections = [
   "Staff",
   "Tips",
   "Visitors",
-  "users",
-  "usergroups"
+  "Users",
+  "Usergroups"
 ];
 const edgeCollections = [
   "hasPerm",
-  "memberOf",
-  "patient_profile",
-  "staff_profile"
+  "memberOf"
 ];
 
 for (const localName of documentCollections) {
@@ -37,9 +35,70 @@ for (const localName of edgeCollections) {
   }
 }
 
-const users = module.context.collection('users');
+const staff = module.context.collection('Staff');
+const memberOf = module.context.collection('memberOf')
+const usergroups = module.context.collection('Usergroups');
+const patients = module.context.collection('Patients');
+const users = module.context.collection('Users');
+
 users.ensureIndex({
   type: 'hash',
   fields: ['username'],
   unique: true
 });
+
+patients.ensureIndex({
+  type: 'hash',
+  fields: ['email'],
+  unique: true
+});
+
+staff.ensureIndex({
+  type: 'hash',
+  fields: ['email'],
+  unique: true
+});
+
+usergroups.ensureIndex({
+  type: 'hash',
+  fields: ['name'],
+  unique: true
+});
+
+const auth = require('../util/auth');
+try {
+  const admin = { email: "admin", perms: ["all"] };
+  admin.authData = auth.create("clinicc");
+  const meta = staff.save(admin);
+
+  Object.assign(admin, meta);
+  print("Admin creator: done");
+} catch (e) {
+  print("Admin creator: " + e);
+}
+
+const group_overseer = { name: "overseer", perms: ["view_patients"] };
+const overseer = { email: "overseer" };
+
+try {
+  const meta_go = usergroups.save(group_overseer);
+  Object.assign(group_overseer, meta_go);
+  print("Overseer Group creator: done");
+} catch (e) {
+  print("Overseer Group creator: " + e);
+}
+try {
+  overseer.authData = auth.create("clinicc");
+  const meta_o = staff.save(overseer);
+  Object.assign(overseer, meta_o);
+  print("Overseer creator: done");
+} catch (e) {
+  print("Overseer creator: " + e);
+}
+
+try {
+  memberOf.save({ _from: overseer._id, _to: group_overseer._id });
+  print("Overseer linker: done");
+} catch (e) {
+  print("Overseer linker: " + e);
+}
