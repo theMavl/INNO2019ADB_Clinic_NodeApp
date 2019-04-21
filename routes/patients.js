@@ -9,11 +9,14 @@ const restrict = require('../util/restrict');
 const hasPerm = require('../util/hasPerm');
 const Patient = require('../models/patient');
 const auth = require('../util/auth');
+const permission = require('../util/permissions');
 
 const patients = module.context.collection('Patients');
 const perms = module.context.collection('hasPerm');
+const usergroups = module.context.collection('Usergroup');
+const memberOf = module.context.collection('memberOf');
 const keySchema = joi.string().required()
-.description('The key of the patient');
+  .description('The key of the patient');
 
 const sessionMiddleware = require('@arangodb/foxx/sessions');
 const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
@@ -44,7 +47,7 @@ router.post('/login', function (req, res) {
     patient ? patient.authData : {},
     req.body.password
   );
-  if (!valid) res.throw('unauthorized');
+  if (!valid) res.throw(403);
   req.session.uid = patient._id;
   req.sessionStorage.save(req.session);
   res.send({ sucess: true });
@@ -55,26 +58,30 @@ router.post('/login', function (req, res) {
   }).required(), 'Credentials')
   .description('Logs a registered patient in.');
 
-router.get(restrict('view_patients'), function (req, res) {
+router.get(restrict(permission.patients.view), function (req, res) {
   res.send(patients.toArray().map(patient => {
     delete patient.billing;
     delete patient.medical;
     return patient;
   }));
 }, 'list')
-.response([Patient], 'A list of patients.')
-.summary('List all patients')
-.description(dd`
+  .response([Patient], 'A list of patients.')
+  .summary('List all patients')
+  .description(dd`
   Retrieves a list of all patients.
 `);
 
 router.post('/signup', function (req, res) {
   const patient = req.body;
+  const group_patient = usergroups.firstExample({ "name": "patient" });
   try {
     patient.authData = auth.create(patient.password);
     delete patient.password
+    delete patient.perms;
+    patient.residential_area = [0.0, 0.0] // TODO: Получить координаты из patient.address
     const meta = patients.save(patient);
     Object.assign(patient, meta);
+    memberOf.save({ _from: patient._id, _to: group_patient._id });
   } catch (e) {
     res.throw('bad request', 'Email already exists!', e);
   }
@@ -100,12 +107,13 @@ router.post('/signup', function (req, res) {
   .description('Creates a patient and logs him in.');
 
 
-router.post(restrict('add_patients'), function (req, res) {
+router.post(restrict(permission.patients.create), function (req, res) {
   const patient = req.body;
-  // if (!hasPerm(req.user, 'access_patients_billing')) delete patient.billing;
-  // if (!hasPerm(req.user, 'access_patients_medical')) delete patient.medical;
   let meta;
   try {
+    patient.authData = auth.create(patient.password);
+    delete patient.password;
+    patient.residential_area = [0.0, 0.0] // TODO: Получить координаты из patient.address
     meta = patients.save(patient);
   } catch (e) {
     if (e.isArangoError && e.errorNum === ARANGO_DUPLICATE) {
@@ -114,61 +122,61 @@ router.post(restrict('add_patients'), function (req, res) {
     throw e;
   }
   Object.assign(patient, meta);
-  perms.save({_from: req.user._id, _to: patient._id, name: 'change_patients'});
-  perms.save({_from: req.user._id, _to: patient._id, name: 'remove_patients'});
   res.status(201);
   res.set('location', req.makeAbsolute(
-    req.reverse('detail', {key: patient._key})
+    req.reverse('detail', { key: patient._key })
   ));
   res.send(patient);
 }, 'create')
-.body(Patient, 'The patient to create.')
-.response(201, Patient, 'The created patient.')
-.error(HTTP_CONFLICT, 'The patient already exists.')
-.summary('Create a new patient')
-.description(dd`
+  .body(Patient, 'The patient to create.')
+  .response(201, Patient, 'The created patient.')
+  .error(HTTP_CONFLICT, 'The patient already exists.')
+  .summary('Create a new patient')
+  .description(dd`
   Creates a new patient from the request body and
   returns the saved document.
 `);
 
 
 router.get(':key', function (req, res) {
+  if (!hasPerm(req.user._id, permission.patients.view)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
-  if (!hasPerm(req.user, 'view_patients', patientId)) res.throw(403, 'Not authorized');
   let patient
   try {
     patient = patients.document(key);
+    delete patient.authData;
   } catch (e) {
     if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
       throw httpError(HTTP_NOT_FOUND, e.message);
     }
     throw e;
   }
-  if (!hasPerm(req.user, 'access_patients_billing', patientId)) delete patient.billing;
-  if (!hasPerm(req.user, 'access_patients_medical', patientId)) delete patient.medical;
   res.send(patient);
 }, 'detail')
-.pathParam('key', keySchema)
-.response(Patient, 'The patient.')
-.summary('Fetch a patient')
-.description(dd`
+  .pathParam('key', keySchema)
+  .response(Patient, 'The patient.')
+  .summary('Fetch a patient')
+  .description(dd`
   Retrieves a patient by its key.
 `);
 
 
 router.put(':key', function (req, res) {
+  if (!hasPerm(req.user._id, permission.patients.edit)) res.throw(403, 'Not authorized');
+  const super_admin = hasPerm(req.user._id, 'all');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
-  if (!hasPerm(req.user, 'change_patients', patientId)) res.throw(403, 'Not authorized');
-  const canAccessBilling = hasPerm(req.user, 'access_patients_billing', patientId);
-  const canAccessMedical = hasPerm(req.user, 'access_patients_medical', patientId);
   const patient = req.body;
   let meta;
   try {
     const old = patients.document(key);
-    if (!canAccessBilling) patient.billing = old.billing;
-    if (!canAccessMedical) patient.medical = old.medical;
+    if (!super_admin) {
+      patient.authData = old.authData;
+      delete patient.perms;
+    }
+    else patient.authData = auth.create(patient.password);
+    delete patient.password;
     meta = patients.replace(key, patient);
   } catch (e) {
     if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
@@ -180,31 +188,36 @@ router.put(':key', function (req, res) {
     throw e;
   }
   Object.assign(patient, meta);
-  if (!canAccessBilling) delete patient.billing;
-  if (!canAccessMedical) delete patient.medical;
+  if (!super_admin) {
+    delete patient.authData;
+    delete patient.perms;
+  }
   res.send(patient);
 }, 'replace')
-.pathParam('key', keySchema)
-.body(Patient, 'The data to replace the patient with.')
-.response(Patient, 'The new patient.')
-.summary('Replace a patient')
-.description(dd`
+  .pathParam('key', keySchema)
+  .body(Patient, 'The data to replace the patient with.')
+  .response(Patient, 'The new patient.')
+  .summary('Replace a patient')
+  .description(dd`
   Replaces an existing patient with the request body and
   returns the new document.
 `);
 
 
 router.patch(':key', function (req, res) {
+  if (!hasPerm(req.user, permission.patients.edit, patientId)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
-  if (!hasPerm(req.user, 'change_patients', patientId)) res.throw(403, 'Not authorized');
-  const canAccessBilling = hasPerm(req.user, 'access_patients_billing', patientId);
-  const canAccessMedical = hasPerm(req.user, 'access_patients_medical', patientId);
+  const super_admin = hasPerm(req.user._id, 'all');
   const patchData = req.body;
   let patient;
   try {
-    if (!canAccessBilling) delete patchData.billing;
-    if (!canAccessMedical) delete patchData.medical;
+    if (super_admin) {
+      patchData.authData = auth.create(patient.password);
+    } else {
+      delete patchData.authData;
+    }
+    delete patchData.password;
     patients.update(key, patchData);
     patient = patients.document(key);
   } catch (e) {
@@ -216,26 +229,31 @@ router.patch(':key', function (req, res) {
     }
     throw e;
   }
-  if (!canAccessBilling) delete patient.billing;
-  if (!canAccessMedical) delete patient.medical;
+  if (!super_admin) {
+    delete patient.perms;
+    delete patient.authData;
+  }
   res.send(patient);
 }, 'update')
-.pathParam('key', keySchema)
-.body(joi.object().description('The data to update the patient with.'))
-.response(Patient, 'The updated patient.')
-.summary('Update a patient')
-.description(dd`
+  .pathParam('key', keySchema)
+  .body(joi.object().description('The data to update the patient with.'))
+  .response(Patient, 'The updated patient.')
+  .summary('Update a patient')
+  .description(dd`
   Patches a patient with the request body and
   returns the updated document.
 `);
 
 
 router.delete(':key', function (req, res) {
+  if (!hasPerm(req.user, permission.patients.delete)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
-  if (!hasPerm(req.user, 'remove_patients', patientId)) res.throw(403, 'Not authorized');
   for (const perm of perms.inEdges(patientId)) {
     perms.remove(perm);
+  }
+  for (const group of usergroups.inEdges(patientId)) {
+    usergroups.remove(group);
   }
   try {
     patients.remove(key);
@@ -246,9 +264,9 @@ router.delete(':key', function (req, res) {
     throw e;
   }
 }, 'delete')
-.pathParam('key', keySchema)
-.response(null)
-.summary('Remove a patient')
-.description(dd`
+  .pathParam('key', keySchema)
+  .response(null)
+  .summary('Remove a patient')
+  .description(dd`
   Deletes a patient from the database.
 `);

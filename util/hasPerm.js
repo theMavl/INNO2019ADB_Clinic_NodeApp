@@ -14,7 +14,6 @@ module.exports = function (user_id, name, objectId) {
   print(user_id, user);
   if (!user) return false;
 
-  print(user.perms);
   if (user.perms)
     if (user.perms.includes(name) || user.perms.includes("all")) return true;
   if (objectId && hasPerm.firstExample({

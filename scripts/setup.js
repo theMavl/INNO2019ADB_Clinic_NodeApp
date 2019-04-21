@@ -36,7 +36,7 @@ for (const localName of edgeCollections) {
 }
 
 const staff = module.context.collection('Staff');
-const memberOf = module.context.collection('memberOf')
+const memberOf = module.context.collection('memberOf');
 const usergroups = module.context.collection('Usergroups');
 const patients = module.context.collection('Patients');
 const users = module.context.collection('Users');
@@ -78,9 +78,14 @@ try {
 }
 
 const group_overseer = { name: "overseer", perms: ["view_patients"] };
+const group_patient = { name: "patient", perms: ["view_doctors", "add_appointments"] };
 const overseer = { email: "overseer" };
 
 try {
+  const meta_pa = usergroups.save(group_patient);
+  Object.assign(group_patient, meta_pa);
+  print("Patient Group creator: done");
+
   const meta_go = usergroups.save(group_overseer);
   Object.assign(group_overseer, meta_go);
   print("Overseer Group creator: done");
