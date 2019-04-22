@@ -1,6 +1,8 @@
 'use strict';
 const dd = require('dedent');
 const joi = require('joi');
+const db = require('@arangodb').db;
+const aql = require('@arangodb').aql;
 const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
@@ -76,9 +78,11 @@ router.post('/signup', function (req, res) {
   const group_patient = usergroups.firstExample({ "name": "patient" });
   try {
     patient.authData = auth.create(patient.password);
-    delete patient.password
+    delete patient.password;
     delete patient.perms;
-    patient.residential_area = [0.0, 0.0] // TODO: Получить координаты из patient.address
+    const coordinates = db._query(aql`FOR s IN Addresses FILTER s.address == ${patient.address.street + ', ' + patient.address.building} RETURN s.coordinate`).next() || [0.0, 0.0];
+    console.log(coordinates);
+    patient.residential_area = coordinates[0]; // TODO: Получить координаты из patient.address
     const meta = patients.save(patient);
     Object.assign(patient, meta);
     memberOf.save({ _from: patient._id, _to: group_patient._id });
