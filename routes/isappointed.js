@@ -5,8 +5,9 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
-const IsAppointed = require('../models/isappointed');
+const restrict = require('../util/restrict');
 const hasPerm = require('../util/hasPerm');
+const IsAppointed = require('../models/isappointed');
 const permission = require('../util/permissions');
 
 const isAppointedItems = module.context.collection('isAppointed');
