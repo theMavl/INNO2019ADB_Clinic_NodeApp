@@ -21,7 +21,12 @@ module.exports = {
       building: joi.string().required()
     }),
     designation: joi.string().allow(Enumerators.staff_designations),
-    doctor_designation: joi.string().allow(Enumerators.doctor_designations)
+    doctor_designation: joi.string().allow(Enumerators.doctor_designations),
+    security_question: joi.object().keys({
+        question: joi.string().required(),
+        answer: joi.string().required()
+        }
+    )
   },
   forClient(obj) {
     // Implement outgoing transformations here
@@ -33,3 +38,4 @@ module.exports = {
     return obj;
   }
 };
+
