@@ -13,7 +13,7 @@ const permission = require('../util/permissions');
 
 const patients = module.context.collection('Patients');
 const perms = module.context.collection('hasPerm');
-const usergroups = module.context.collection('Usergroup');
+const usergroups = module.context.collection('Usergroups');
 const memberOf = module.context.collection('memberOf');
 const keySchema = joi.string().required()
   .description('The key of the patient');
@@ -92,7 +92,7 @@ router.post('/signup', function (req, res) {
   .body(joi.object({
     first_name: joi.string().required(),
     last_name: joi.string().required(),
-    birth_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
+    birth_date: joi.date().required(),
     ssn: joi.string().regex(/^\d{3}-\d{2}-\d{4}$/).required(),
     email: joi.string().email({ minDomainAtoms: 2 }),
     password: joi.string().required(),

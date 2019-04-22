@@ -122,33 +122,34 @@ router.put(':key', function (req, res) {
   returns the new document.
 `);
 
-// router.put(':key/assign', function (req, res) {
-//   const key = req.pathParams.key;
-//   const appointmentId = `${Appointments.name()}/${key}`;
-//   if (!hasPerm(req.user._id, permission.appointments.assign, appointmentId)) res.throw(403, 'Not authorized');
-//   let meta;
-//   try {
-//     meta = Appointments.replace(key, appointment);
-//   } catch (e) {
-//     if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
-//       throw httpError(HTTP_NOT_FOUND, e.message);
-//     }
-//     if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
-//       throw httpError(HTTP_CONFLICT, e.message);
-//     }
-//     throw e;
-//   }
-//   Object.assign(appointment, meta);
-//   res.send(appointment);
-// }, 'replace')
-//   .pathParam('key', keySchema)
-//   .body(Appointment, 'The data to replace the appointment with.')
-//   .response(Appointment, 'The new appointment.')
-//   .summary('Replace a appointment')
-//   .description(dd`
-//   Replaces an existing appointment with the request body and
-//   returns the new document.
-// `);
+router.put(':key/assign', function (req, res) {
+  const key = req.pathParams.key;
+  const appointmentId = `${Appointments.name()}/${key}`;
+  if (!hasPerm(req.user._id, permission.appointments.assign, appointmentId)) res.throw(403, 'Not authorized');
+  let meta;
+  try {
+    meta = Appointments.replace(key, appointment);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
+      throw httpError(HTTP_CONFLICT, e.message);
+    }
+    throw e;
+  }
+  Object.assign(appointment, meta);
+  res.send(appointment);
+}, 'replace')
+  .pathParam('key', keySchema)
+  .body(joi.object({
+    doctor: joi.string().required(),
+    datetime: joi.date().required()
+  }).required(), 'Appointment data')
+  .summary('Assign an appointment')
+  .description(dd`
+  Assign the appointment to a given doctor
+`);
 
 
 router.patch(':key', function (req, res) {
