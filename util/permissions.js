@@ -20,4 +20,10 @@ module.exports = {
         view: "view_appointments",
         assign: "assign_appointments"
     },
+
+    tips: {
+        create: "add_tips",
+        edit: "change_tips",
+        delete: "remove_tips",
+    }
 }
