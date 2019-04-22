@@ -208,8 +208,8 @@ router.patch(':key', function (req, res) {
 
     const key = req.pathParams.key;
     const staffId = `${staff_members.name()}/${key}`;
-    if (!hasPerm(req.user, permission.staff.edit, staffId)) res.throw(403, 'Not authorized');
-    const super_admin = hasPerm(req.user._id, 'all');
+    if (!hasPerm(req.session.uid, permission.staff.edit, staffId)) res.throw(403, 'Not authorized');
+    const super_admin = hasPerm(req.session.uid, 'all');
     const patchData = req.body;
     let member;
     try {
@@ -262,4 +262,3 @@ router.delete(':key', function (req, res) {
     .description(dd`
   Deletes a staff from the database.
 `);
-
