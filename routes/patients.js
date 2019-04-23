@@ -80,8 +80,10 @@ router.post('/signup', function (req, res) {
     patient.authData = auth.create(patient.password);
     delete patient.password;
     delete patient.perms;
+    console.log("kek");
     var addr = patient.address.street + ', ' + patient.address.building;
-    const coordinates = db._query(aql`FOR s IN Addresses FILTER s.address == '${addr}' RETURN s.coordinate`).next() || [[0.0, 0.0]];
+    console.log(addr);
+    const coordinates = db._query(aql`FOR s IN test_Addresses FILTER s.address == '${addr}' RETURN s.coordinate`).next() || [[0.0, 0.0]];
     patient.residential_area = coordinates[0]; // TODO: Получить координаты из patient.address
     const meta = patients.save(patient);
     Object.assign(patient, meta);
