@@ -9,6 +9,7 @@ const documentCollections = [
   "Staff",
   "Tips",
   "Visitors",
+  "Addresses",
   "Users",
   "Usergroups"
 ];

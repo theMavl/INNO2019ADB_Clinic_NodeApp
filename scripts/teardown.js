@@ -9,6 +9,7 @@ const collections = [
   "Staff",
   "Tips",
   "Visitors",
+  "Addresses",
   "users",
   "usergroups",
   "hasPerm",
