@@ -84,8 +84,11 @@ router.post('/signup', function (req, res) {
     var addr = patient.address.street + ', ' + patient.address.building;
     console.log(addr);
     const coordinates = db._query(aql`FOR s IN test_Addresses FILTER s.address == '${addr}' RETURN s.coordinate`).next() || [[0.0, 0.0]];
+    console.log(coordinates);
     patient.residential_area = coordinates[0]; // TODO: Получить координаты из patient.address
+    console.log(patient);
     const meta = patients.save(patient);
+    console.log(meta);
     Object.assign(patient, meta);
     memberOf.save({ _from: patient._id, _to: group_patient._id });
   } catch (e) {
