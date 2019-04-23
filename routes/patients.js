@@ -86,8 +86,10 @@ router.post('/signup', function (req, res) {
     var query = aql`FOR s IN test_Addresses FILTER s.address == 'Переулок 1-й Машиностроителей, 1' RETURN s.coordinate`;
     console.log(query);
     const coordinates = db._query(query);
-    console.log(coordinates);
-    patient.residential_area = coordinates[0]; // TODO: Получить координаты из patient.address
+    console.log(coordinates[0]);
+    var area = [ coordinates[0][0], coordinates[0][1] ];
+    console.log(area)
+    patient.residential_area = area; // TODO: Получить координаты из patient.address
     console.log(patient);
     const meta = patients.save(patient);
     console.log(meta);
