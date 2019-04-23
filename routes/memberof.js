@@ -7,6 +7,10 @@ const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
 const MemberOf = require('../models/memberof');
 
+const permission = require('../util/permissions');
+const restrict = require('../util/restrict');
+const hasPerm = require('../util/hasPerm');
+
 const memberOfItems = module.context.collection('memberOf');
 const keySchema = joi.string().required()
 .description('The key of the memberOf');
@@ -32,7 +36,7 @@ const NewMemberOf = Object.assign({}, MemberOf, {
 });
 
 
-router.get(function (req, res) {
+router.get(restrict(permission.usergroups.view), function (req, res) {
   res.send(memberOfItems.all());
 }, 'list')
 .response([MemberOf], 'A list of memberOfItems.')
@@ -42,7 +46,7 @@ router.get(function (req, res) {
 `);
 
 
-router.post(function (req, res) {
+router.post(restrict(permission.usergroups.create),function (req, res) {
   const memberOf = req.body;
   let meta;
   try {
@@ -72,6 +76,8 @@ router.post(function (req, res) {
 
 router.get(':key', function (req, res) {
   const key = req.pathParams.key;
+  const memberOfID = `${MemberOf.name()}/${key}`;
+  if (!hasPerm(req.session.uid, permission.usergroups.view, memberOfID)) res.throw(403, 'Not authorized');
   let memberOf
   try {
     memberOf = memberOfItems.document(key);
@@ -93,6 +99,8 @@ router.get(':key', function (req, res) {
 
 router.put(':key', function (req, res) {
   const key = req.pathParams.key;
+  const memberOfID = `${MemberOf.name()}/${key}`;
+  if (!hasPerm(req.session.uid, permission.usergroups.edit, memberOfID)) res.throw(403, 'Not authorized');
   const memberOf = req.body;
   let meta;
   try {
@@ -121,6 +129,8 @@ router.put(':key', function (req, res) {
 
 router.patch(':key', function (req, res) {
   const key = req.pathParams.key;
+  const memberOfID = `${MemberOf.name()}/${key}`;
+  if (!hasPerm(req.session.uid, permission.usergroups.edit, memberOfID)) res.throw(403, 'Not authorized');
   const patchData = req.body;
   let memberOf;
   try {
@@ -149,6 +159,8 @@ router.patch(':key', function (req, res) {
 
 router.delete(':key', function (req, res) {
   const key = req.pathParams.key;
+  const memberOfID = `${MemberOf.name()}/${key}`;
+  if (!hasPerm(req.session.uid, permission.usergroups.delete, memberOfID)) res.throw(403, 'Not authorized');
   try {
     memberOfItems.remove(key);
   } catch (e) {

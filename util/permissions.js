@@ -25,5 +25,19 @@ module.exports = {
         create: "add_tips",
         edit: "change_tips",
         delete: "remove_tips",
+    },
+
+    permissions: {
+        create: "add_permissions",
+        edit: "change_permissions",
+        delete: "remove_permissions",
+        view: "view_permissions",
+    },
+
+    usergroups: {
+        create: "add_usergroups",
+        edit: "change_usergroups",
+        delete: "remove_usergroups",
+        view: "view_usergroups",
     }
 }

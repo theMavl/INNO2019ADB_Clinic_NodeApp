@@ -139,9 +139,9 @@ router.post(restrict(permission.patients.create), function (req, res) {
 
 
 router.get(':key', function (req, res) {
-  if (!hasPerm(req.user._id, permission.patients.view)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
+  if (!hasPerm(req.session.uid, permission.patients.view, patientId)) res.throw(403, 'Not authorized');
   let patient
   try {
     patient = patients.document(key);
@@ -163,10 +163,10 @@ router.get(':key', function (req, res) {
 
 
 router.put(':key', function (req, res) {
-  if (!hasPerm(req.user._id, permission.patients.edit)) res.throw(403, 'Not authorized');
-  const super_admin = hasPerm(req.user._id, 'all');
+  const super_admin = hasPerm(req.session.uid, 'all');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
+  if (!hasPerm(req.session.uid, permission.patients.edit, patientId)) res.throw(403, 'Not authorized');
   const patient = req.body;
   let meta;
   try {
@@ -205,10 +205,10 @@ router.put(':key', function (req, res) {
 
 
 router.patch(':key', function (req, res) {
-  if (!hasPerm(req.user, permission.patients.edit, patientId)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
-  const super_admin = hasPerm(req.user._id, 'all');
+  if (!hasPerm(req.session.uid, permission.patients.edit, patientId)) res.throw(403, 'Not authorized');
+  const super_admin = hasPerm(req.session.uid, 'all');
   const patchData = req.body;
   let patient;
   try {
@@ -246,9 +246,9 @@ router.patch(':key', function (req, res) {
 
 
 router.delete(':key', function (req, res) {
-  if (!hasPerm(req.user, permission.patients.delete)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
+  if (!hasPerm(req.session.uid, permission.patients.delete, patientId)) res.throw(403, 'Not authorized');
   for (const perm of perms.inEdges(patientId)) {
     perms.remove(perm);
   }
