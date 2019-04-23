@@ -5,7 +5,6 @@ const joi = require('joi');
 module.exports = {
   schema: {
     // Describe the attributes with joi here
-    _key: joi.string(),
     first_name: joi.string().required(), 
     last_name: joi.string().required(), 
     registered: joi.bool(),

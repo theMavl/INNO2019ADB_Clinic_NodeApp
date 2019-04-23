@@ -100,7 +100,7 @@ router.get(':doctor_designation', function (req, res) {
     res.send(doctor);
   }, 'detail')
   .pathParam('key', keySchema)
-  .response(doctor, 'The designation.')
+  .response(Doctors, 'The designation.')
   .summary('Fetch a doctor designation')
   .description(dd `
 Retrieves a doctor by its key.
