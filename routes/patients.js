@@ -84,14 +84,15 @@ router.post('/signup', function (req, res) {
     console.log("kek");
     var addr = patient.address.street + ', ' + patient.address.building;
     console.log(addr);
-    //const address = addresses.firstExample({ "address": "Переулок 1-й Машиностроителей, 1" });
-    //var area = address.coordinate;
-    var query = `FOR s IN test_Addresses FILTER s.address == '@@address' RETURN s.coordinate`;
-    //console.log(address);
-    const coordinates = db._query(query, {'@address': addr});
-    console.log(coordinates);
-    console.log(coordinates[0]);
-    var area = [ coordinates[0][0], coordinates[0][1] ];
+    const address = addresses.firstExample({ "address": addr });
+    console.log(address);
+    var area = address.coordinate;
+    //var query = `FOR s IN test_Addresses FILTER s.address == '@@address' RETURN s.coordinate`;
+    //console.log(query);
+    //const coordinates = db._query(query, {'@address': addr});
+    //console.log(coordinates);
+    //console.log(coordinates[0]);
+    //var area = [ coordinates[0][0], coordinates[0][1] ];
     console.log(area)
     patient.residential_area = area; // TODO: Получить координаты из patient.address
     console.log(patient);
