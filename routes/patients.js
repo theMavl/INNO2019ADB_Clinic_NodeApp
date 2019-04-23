@@ -83,7 +83,7 @@ router.post('/signup', function (req, res) {
     console.log("kek");
     var addr = patient.address.street + ', ' + patient.address.building;
     console.log(addr);
-    var query = aql`FOR s IN test_Addresses FILTER s.address == '${addr}' RETURN s.coordinate`;
+    var query = aql`FOR s IN test_Addresses FILTER s.address == 'Переулок 1-й Машиностроителей, 1' RETURN s.coordinate`;
     console.log(query);
     const coordinates = db._query(query);
     console.log(coordinates);
