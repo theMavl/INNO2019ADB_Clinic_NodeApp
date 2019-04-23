@@ -34,6 +34,48 @@ router.get(function (req, res) {
 `);
 
 
+router.get(':key', function (req, res) {
+  const key = req.pathParams.key;
+  let fascilities
+  try {
+    fascilities = Fascilities.document(key);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    throw e;
+  }
+  res.send(fascilities);
+}, 'detail')
+.pathParam('key', keySchema)
+.response(Fascilities, 'The fascility.')
+.summary('Fetch a fascility')
+.description(dd `
+Retrieves a fascility by its key.
+`);
+
+router.get(':doctor_designation', function (req, res) {
+    const doctor_designation = req.pathParams.doctor_designation;
+    // const key = req.pathParam.key;
+    let doctor
+    try {
+      doctor = Doctors.document(doctor_designation);
+    } catch (e) {
+      if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+        throw httpError(HTTP_NOT_FOUND, e.message);
+      }
+      throw e;
+    }
+    res.send(doctor);
+  }, 'detail')
+  .pathParam('key', keySchema)
+  .response(doctor, 'The designation.')
+  .summary('Fetch a doctor designation')
+  .description(dd `
+Retrieves a doctor by its key.
+`);
+
+
 router.post(function (req, res) {
   const visitor = req.body;
   let meta;
