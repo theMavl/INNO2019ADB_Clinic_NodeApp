@@ -83,7 +83,7 @@ router.post('/signup', function (req, res) {
     console.log("kek");
     var addr = patient.address.street + ', ' + patient.address.building;
     console.log(addr);
-    const coordinates = db._query(aql`FOR s IN test_Addresses FILTER s.address == '${addr}' RETURN s.coordinate`).next() || [[0.0, 0.0]];
+    const coordinates = db._query(aql`FOR s IN test_Addresses FILTER s.address == '${addr}' RETURN s.coordinate`);
     console.log(coordinates);
     patient.residential_area = coordinates[0]; // TODO: Получить координаты из patient.address
     console.log(patient);
