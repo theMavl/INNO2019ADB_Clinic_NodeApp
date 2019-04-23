@@ -81,23 +81,18 @@ router.post('/signup', function (req, res) {
     patient.authData = auth.create(patient.password);
     delete patient.password;
     delete patient.perms;
-    console.log("kek");
     var addr = patient.address.street + ', ' + patient.address.building;
-    console.log(addr);
     const address = addresses.firstExample({ "address": addr });
-    console.log(address);
-    var area = address.coordinate;
-    //var query = `FOR s IN test_Addresses FILTER s.address == '@@address' RETURN s.coordinate`;
-    //console.log(query);
-    //const coordinates = db._query(query, {'@address': addr});
-    //console.log(coordinates);
-    //console.log(coordinates[0]);
-    //var area = [ coordinates[0][0], coordinates[0][1] ];
-    console.log(area)
-    patient.residential_area = area; // TODO: Получить координаты из patient.address
-    console.log(patient);
+
+    var area;
+    if (address === null) {
+      area = [0.0, 0.0]
+    } else {
+      area = address.coordinate
+    }
+
+    patient.residential_area = area;
     const meta = patients.save(patient);
-    console.log(meta);
     Object.assign(patient, meta);
     memberOf.save({ _from: patient._id, _to: group_patient._id });
   } catch (e) {
@@ -131,7 +126,18 @@ router.post(restrict(permission.patients.create), function (req, res) {
   try {
     patient.authData = auth.create(patient.password);
     delete patient.password;
-    patient.residential_area = [0.0, 0.0] // TODO: Получить координаты из patient.address
+
+    var addr = patient.address.street + ', ' + patient.address.building;
+    const address = addresses.firstExample({ "address": addr });
+
+    var area;
+    if (address === null) {
+      area = [0.0, 0.0]
+    } else {
+      area = address.coordinate
+    }
+
+    patient.residential_area = area;
     meta = patients.save(patient);
   } catch (e) {
     if (e.isArangoError && e.errorNum === ARANGO_DUPLICATE) {
