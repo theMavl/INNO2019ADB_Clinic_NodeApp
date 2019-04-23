@@ -16,6 +16,7 @@ const permission = require('../util/permissions');
 const patients = module.context.collection('Patients');
 const perms = module.context.collection('hasPerm');
 const usergroups = module.context.collection('Usergroups');
+const addresses = module.context.collection('Addresses');
 const memberOf = module.context.collection('memberOf');
 const keySchema = joi.string().required()
   .description('The key of the patient');
@@ -83,9 +84,12 @@ router.post('/signup', function (req, res) {
     console.log("kek");
     var addr = patient.address.street + ', ' + patient.address.building;
     console.log(addr);
-    var query = aql`FOR s IN test_Addresses FILTER s.address == 'Переулок 1-й Машиностроителей, 1' RETURN s.coordinate`;
-    console.log(query);
-    const coordinates = db._query(query);
+    //const address = addresses.firstExample({ "address": "Переулок 1-й Машиностроителей, 1" });
+    //var area = address.coordinate;
+    var query = `FOR s IN test_Addresses FILTER s.address == '@@address' RETURN s.coordinate`;
+    //console.log(address);
+    const coordinates = db._query(query, {'@address': addr});
+    console.log(coordinates);
     console.log(coordinates[0]);
     var area = [ coordinates[0][0], coordinates[0][1] ];
     console.log(area)
