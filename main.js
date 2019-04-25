@@ -12,6 +12,7 @@ module.context.use('/visitors', require('./routes/visitors'), 'visitors');
 // module.context.use('/users', require('./routes/users'), 'users');
 module.context.use('/usergroups', require('./routes/usergroups'), 'usergroups');
 module.context.use('/memberof', require('./routes/memberof'), 'memberof');
+module.context.use('/isappointed', require('./routes/isappointed'), 'isappointed');
 
 const sessionsMiddleware = require('@arangodb/foxx/sessions');
 const sessions = sessionsMiddleware({
