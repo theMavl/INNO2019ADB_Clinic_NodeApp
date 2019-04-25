@@ -5,12 +5,17 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+
 const restrict = require('../util/restrict');
 const hasPerm = require('../util/hasPerm');
-const IsAppointed = require('../models/isappointed');
 const permission = require('../util/permissions');
 
+const IsAppointed = require('../models/isappointed');
+
 const isAppointedItems = module.context.collection('isAppointed');
+
 const keySchema = joi.string().required()
     .description('The key of the isAppointed');
 
@@ -23,9 +28,12 @@ const HTTP_CONFLICT = status('conflict');
 const router = createRouter();
 module.exports = router;
 
+router.use(sessionMiddleware({
+  storage: module.context.collection('sessions'),
+  transport: cookieTransport(['header', 'cookie'])
+}));
 
 router.tag('isAppointed');
-
 
 const NewIsAppointed = Object.assign({}, IsAppointed, {
     schema: Object.assign({}, IsAppointed.schema, {
@@ -75,7 +83,8 @@ router.post(restrict(permission.appointments.create), function (req, res) {
 
 
 router.get(':key', function (req, res) {
-    if (!hasPerm(req.user, permission.appointments.view)) res.throw(403, 'Not authorized');
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.appointments.view)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
     let isAppointed;
     try {
@@ -97,7 +106,8 @@ router.get(':key', function (req, res) {
 
 
 router.put(':key', function (req, res) {
-    if (!hasPerm(req.user, permission.appointments.edit)) res.throw(403, 'Not authorized');
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.appointments.edit)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
     const isAppointed = req.body;
     let meta;
@@ -128,7 +138,8 @@ router.put(':key', function (req, res) {
 router.patch(':key', function (req, res) {
     const key = req.pathParams.key;
     const appointmentId = `${appointments.name()}/${key}`;
-    if (!hasPerm(req.user, permission.appointments.edit, appointmentId)) res.throw(403, 'Not authorized');
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.appointments.edit, appointmentId)) res.throw(403, 'Forbidden');
     const patchData = req.body;
     let isAppointed;
     try {
@@ -156,7 +167,8 @@ router.patch(':key', function (req, res) {
 
 
 router.delete(':key', function (req, res) {
-    if (!hasPerm(req.user, permission.appointments.delete)) res.throw(403, 'Not authorized');
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.appointments.delete)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
     try {
         isAppointedItems.remove(key);

@@ -5,11 +5,18 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+
+const permission = require('../util/permissions');
+const restrict = require('../util/restrict');
+
 const Visitor = require('../models/visitor');
 
 const Visitors = module.context.collection('Visitors');
 const Doctors = module.context.collection('Staff');
 const Facilities = module.context.collection('Facilities')
+
 const keySchema = joi.string().required()
   .description('The key of the visitor');
 
@@ -22,11 +29,14 @@ const HTTP_CONFLICT = status('conflict');
 const router = createRouter();
 module.exports = router;
 
+router.use(sessionMiddleware({
+  storage: module.context.collection('sessions'),
+  transport: cookieTransport(['header', 'cookie'])
+}));
 
 router.tag('visitor');
 
-
-router.get(function (req, res) {
+router.get(restrict(permission.visitors.view), function (req, res) {
     res.send(Visitors.all());
   }, 'list')
   .response([Visitor], 'A list of Visitors.')

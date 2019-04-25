@@ -5,9 +5,13 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+
 const HomeRemedy = require('../models/homeremedy');
 
 const HomeRemedies = module.context.collection('HomeRemedies');
+
 const keySchema = joi.string().required()
     .description('The key of the homeRemedy');
 
@@ -20,6 +24,10 @@ const HTTP_CONFLICT = status('conflict');
 const router = createRouter();
 module.exports = router;
 
+router.use(sessionMiddleware({
+    storage: module.context.collection('sessions'),
+    transport: cookieTransport(['header', 'cookie'])
+  }));
 
 router.tag('homeRemedy');
 

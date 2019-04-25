@@ -18,7 +18,8 @@ module.exports = {
         edit: "change_appointments",
         delete: "remove_appointments",
         view: "view_appointments",
-        assign: "assign_appointments"
+        assign: "assign_appointments",
+        cancel: "cancel_appointment"
     },
 
     leave_applies: {
@@ -46,5 +47,12 @@ module.exports = {
         edit: "change_usergroups",
         delete: "remove_usergroups",
         view: "view_usergroups",
-    }
+    },
+
+    visitors: {
+        create: "add_visitors",
+        edit: "change_visitors",
+        delete: "remove_visitors",
+        view: "view_visitors"
+    },
 };

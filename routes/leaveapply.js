@@ -5,13 +5,18 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
-const LeaveApply = require('../models/leaveapply');
-const Enumerators = require('../models/enumerators');
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+
 const restrict = require('../util/restrict');
 const hasPerm = require('../util/hasPerm');
 const permission = require('../util/permissions');
 
+const LeaveApply = require('../models/leaveapply');
+const Enumerators = require('../models/enumerators');
+
 const LeaveApplyItems = module.context.collection('LeaveApply');
+
 const keySchema = joi.string().required()
 .description('The key of the leaveApply');
 
@@ -24,8 +29,6 @@ const HTTP_CONFLICT = status('conflict');
 const router = createRouter();
 module.exports = router;
 
-const sessionMiddleware = require('@arangodb/foxx/sessions');
-const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
 router.use(sessionMiddleware({
   storage: module.context.collection('sessions'),
   transport: cookieTransport(['header', 'cookie'])

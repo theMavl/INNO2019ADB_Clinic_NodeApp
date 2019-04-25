@@ -1,8 +1,8 @@
 'use strict';
 
 module.context.use('/patients', require('./routes/patients'), 'patients');
-module.context.use('/geo_test', require('./routes/geo_test'), 'geo_test');
-module.context.use('/auth', require('./routes/auth'), 'auth');
+// module.context.use('/geo_test', require('./routes/geo_test'), 'geo_test');
+// module.context.use('/auth', require('./routes/auth'), 'auth');
 module.context.use('/appointments', require('./routes/appointments'), 'appointments');
 module.context.use('/homeremedies', require('./routes/homeremedies'), 'homeremedies');
 module.context.use('/leaveapply', require('./routes/leaveapply'), 'leaveapply');

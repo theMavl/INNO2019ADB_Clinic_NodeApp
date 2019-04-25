@@ -5,9 +5,17 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+
+const permission = require('../util/permissions');
+const restrict = require('../util/restrict');
+const hasPerm = require('../util/hasPerm');
+
 const Usergroup = require('../models/usergroup');
 
 const usergroups = module.context.collection('usergroups');
+
 const keySchema = joi.string().required()
 .description('The key of the usergroup');
 
@@ -20,11 +28,14 @@ const HTTP_CONFLICT = status('conflict');
 const router = createRouter();
 module.exports = router;
 
+router.use(sessionMiddleware({
+  storage: module.context.collection('sessions'),
+  transport: cookieTransport(['header', 'cookie'])
+}));
 
 router.tag('usergroup');
 
-
-router.get(function (req, res) {
+router.get(restrict(permission.usergroups.view), function (req, res) {
   res.send(usergroups.all());
 }, 'list')
 .response([Usergroup], 'A list of usergroups.')
@@ -34,7 +45,7 @@ router.get(function (req, res) {
 `);
 
 
-router.post(function (req, res) {
+router.post(restrict(permission.usergroups.create), function (req, res) {
   const usergroup = req.body;
   let meta;
   try {
@@ -64,6 +75,9 @@ router.post(function (req, res) {
 
 router.get(':key', function (req, res) {
   const key = req.pathParams.key;
+  const usergroupID = `${usergroups.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.usergroups.view, usergroupID)) res.throw(403, 'Forbidden');
   let usergroup
   try {
     usergroup = usergroups.document(key);
@@ -85,6 +99,9 @@ router.get(':key', function (req, res) {
 
 router.put(':key', function (req, res) {
   const key = req.pathParams.key;
+  const usergroupID = `${usergroups.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.usergroups.edit, usergroupID)) res.throw(403, 'Forbidden');
   const usergroup = req.body;
   let meta;
   try {
@@ -113,6 +130,9 @@ router.put(':key', function (req, res) {
 
 router.patch(':key', function (req, res) {
   const key = req.pathParams.key;
+  const usergroupID = `${usergroups.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.usergroups.edit, usergroupID)) res.throw(403, 'Forbidden');
   const patchData = req.body;
   let usergroup;
   try {
@@ -141,6 +161,9 @@ router.patch(':key', function (req, res) {
 
 router.delete(':key', function (req, res) {
   const key = req.pathParams.key;
+  const usergroupID = `${usergroups.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.usergroups.delete, usergroupID)) res.throw(403, 'Forbidden');
   try {
     usergroups.remove(key);
   } catch (e) {

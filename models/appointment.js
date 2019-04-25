@@ -17,7 +17,7 @@ module.exports = {
     payed: joi.bool().required(),
     urgent: joi.bool(),
     status: joi.string().valid(Enumerators.appointment_status),
-    appointment_date: joi.date(),
+    assigned_datetime: joi.date(),
     cancel_reason: joi.string(),
     reject_reason: joi.string()    
   },
