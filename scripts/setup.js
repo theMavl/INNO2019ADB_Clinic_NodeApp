@@ -80,7 +80,7 @@ try {
 
 const group_overseer = { name: "overseer", perms: ["view_patients"] };
 const group_patient = { name: "patient", perms: ["view_doctors", "add_appointments"] };
-const group_doctor = { name: "doctor", perms: ["change_appointments", "view_appointments"] };
+const group_doctor = { name: "doctor", perms: ["approve_reject_appointments", "view_appointments"] };
 const overseer = { email: "overseer" };
 
 try {

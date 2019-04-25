@@ -58,7 +58,7 @@ router.post(restrict(permission.appointments.create), function (req, res) {
     const isAppointed = req.body;
     let meta;
     try {
-        meta = isAppointedItems.save(isAppointed._from, isAppointed._to, isAppointed);
+        meta = isAppointedItems.save(`${Doctors.name()}/${isAppointed._from}`, `${Appointments.name()}/${isAppointed._to}`, isAppointed);
     } catch (e) {
         if (e.isArangoError && e.errorNum === ARANGO_DUPLICATE) {
             throw httpError(HTTP_CONFLICT, e.message);
@@ -102,6 +102,29 @@ router.get(':key', function (req, res) {
     .summary('Fetch an isAppointed')
     .description(dd`
   Retrieves an isAppointed by its key.
+`);
+
+
+router.get(':key/doctor', function (req, res) {
+    const doctor_key = req.pathParams.key;
+    const doctorId = `${Doctors.name()}/${doctor_key}`;
+    if (!hasPerm(doctorId, permission.appointments.view)) res.throw(403, 'Not authorized');
+    let isAppointed;
+    try {
+        isAppointed = isAppointedItems.byExample( {'_from': doctorId} );
+    } catch (e) {
+        if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+            throw httpError(HTTP_NOT_FOUND, e.message);
+        }
+        throw e;
+    }
+    res.send(isAppointed);
+}, 'detail')
+    .pathParam('key', keySchema)
+    .response([IsAppointed], 'The schedule')
+    .summary('Fetch an schedule of a specific doctor')
+    .description(dd`
+  Retrieves a schedule by key of a doctor.
 `);
 
 

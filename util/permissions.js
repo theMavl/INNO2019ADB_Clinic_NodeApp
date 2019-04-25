@@ -19,7 +19,8 @@ module.exports = {
         delete: "remove_appointments",
         view: "view_appointments",
         assign: "assign_appointments",
-        cancel: "cancel_appointment"
+        cancel: "cancel_appointment",
+        approve_reject: "approve_reject_appointments"
     },
 
     leave_applies: {
