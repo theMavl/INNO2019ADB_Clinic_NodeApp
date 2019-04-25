@@ -10,6 +10,7 @@ const hasPerm = require('../util/hasPerm');
 const IsAppointed = require('../models/isappointed');
 const permission = require('../util/permissions');
 
+const Appointments = module.context.collection('Appointments');
 const isAppointedItems = module.context.collection('isAppointed');
 const Doctors = module.context.collection('Staff');
 const keySchema = joi.string().required()
@@ -47,11 +48,11 @@ router.get(restrict(permission.appointments.view), function (req, res) {
 `);
 
 
-router.post(function (req, res) {
+router.post(restrict(permission.appointments.create), function (req, res) {
     const isAppointed = req.body;
     let meta;
     try {
-        meta = isAppointedItems.save(isAppointed._from, isAppointed._to, isAppointed);
+        meta = isAppointedItems.save(`${Doctors.name()}/${isAppointed._from}`, `${Appointments.name()}/${isAppointed._to}`, isAppointed);
     } catch (e) {
         if (e.isArangoError && e.errorNum === ARANGO_DUPLICATE) {
             throw httpError(HTTP_CONFLICT, e.message);
