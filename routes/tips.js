@@ -5,11 +5,17 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
-const Tip = require('../models/tip');
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+
 const restrict = require('../util/restrict');
 const permission = require('../util/permissions');
+const hasPerm = require('../util/hasPerm');
+
+const Tip = require('../models/tip');
 
 const Tips = module.context.collection('Tips');
+
 const keySchema = joi.string().required()
   .description('The key of the tip');
 
@@ -22,9 +28,12 @@ const HTTP_CONFLICT = status('conflict');
 const router = createRouter();
 module.exports = router;
 
+router.use(sessionMiddleware({
+  storage: module.context.collection('sessions'),
+  transport: cookieTransport(['header', 'cookie'])
+}));
 
 router.tag('tip');
-
 
 router.get(function (req, res) {
   res.send(Tips.all());
@@ -96,6 +105,9 @@ router.get(':key', function (req, res) {
 
 router.put(':key', function (req, res) {
   const key = req.pathParams.key;
+  const tipID = `${Tips.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.tips.edit, tipID)) res.throw(403, 'Forbidden');
   const tip = req.body;
   let meta;
   try {
@@ -124,6 +136,9 @@ router.put(':key', function (req, res) {
 
 router.patch(':key', function (req, res) {
   const key = req.pathParams.key;
+  const tipID = `${Tips.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.tips.edit, tipID)) res.throw(403, 'Forbidden');
   const patchData = req.body;
   let tip;
   try {
@@ -152,6 +167,9 @@ router.patch(':key', function (req, res) {
 
 router.delete(':key', function (req, res) {
   const key = req.pathParams.key;
+  const tipID = `${Tips.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.tips.delete, tipID)) res.throw(403, 'Forbidden');
   try {
     Tips.remove(key);
   } catch (e) {

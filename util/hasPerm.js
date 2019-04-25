@@ -7,6 +7,8 @@ const patients = module.context.collection('Patients');
 const staff = module.context.collection('Staff');
 
 module.exports = function (user_id, name, objectId) {
+  if (!user_id)
+    return false;
   let user = patients.firstExample("_id", user_id);
   if (!user)
     user = staff.firstExample("_id", user_id);

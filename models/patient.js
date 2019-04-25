@@ -18,7 +18,7 @@ module.exports = {
       street: joi.string().required(),
       building: joi.string().required()
     }),
-    blood_type: joi.string().allow(Enumerators.blood_types)
+    blood_type: joi.string().valid(Enumerators.blood_types)
   },
   forClient(obj) {
     // Implement outgoing transformations here

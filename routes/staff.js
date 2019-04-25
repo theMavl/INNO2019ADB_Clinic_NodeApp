@@ -5,10 +5,21 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
-const Staff = require('../models/staff');
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+const db = require('@arangodb').db;
+const aql = require('@arangodb').aql;
+
 const auth = require('../util/auth');
+const restrict = require('../util/restrict');
+const hasPerm = require('../util/hasPerm');
+const permission = require('../util/permissions');
+
+const Staff = require('../models/staff');
+const Enumerators = require('../models/enumerators');
 
 const staff_members = module.context.collection('Staff');
+
 const keySchema = joi.string().required()
     .description('The key of the staff');
 
@@ -17,12 +28,6 @@ const ARANGO_DUPLICATE = errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
 const ARANGO_CONFLICT = errors.ERROR_ARANGO_CONFLICT.code;
 const HTTP_NOT_FOUND = status('not found');
 const HTTP_CONFLICT = status('conflict');
-
-const sessionMiddleware = require('@arangodb/foxx/sessions');
-const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
-
-const hasPerm = require('../util/hasPerm');
-const permission = require('../util/permissions');
 
 const router = createRouter();
 module.exports = router;
@@ -34,11 +39,35 @@ router.use(sessionMiddleware({
 
 router.tag('staff');
 
-
-router.get(function (req, res) {
-    res.send(StaffItems.all());
+router.get(restrict(permission.staff.view), function (req, res) {
+    const members = db._query(aql`FOR s IN ${staff_members} RETURN { 
+        first_name: s.first_name, 
+        last_name: s.last_name,
+        birth_date: s.birth_date, 
+        ssn: s.ssn,
+        email: s.email,
+        address: s.address,
+        designation: s.designation,
+        doctor_designation: s.doctor_designation
+    }`)
+    res.send(members);
 }, 'list')
-    .response([Staff], 'A list of StaffItems.')
+    .response([joi.object({
+        first_name: joi.string().required(),
+        last_name: joi.string().required(),
+        birth_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
+        ssn: joi.string().regex(/^\d{3}-\d{2}-\d{4}$/).required(),
+        email: joi.string().email({ minDomainAtoms: 2 }),
+        address: joi.object().keys({
+            zip: joi.string().required(),
+            country: joi.string().required(),
+            city: joi.string().required(),
+            street: joi.string().required(),
+            building: joi.string().required()
+        }),
+        designation: joi.string().valid(Enumerators.staff_designations),
+        doctor_designation: joi.string().valid(Enumerators.doctor_designations)
+    })], 'A list of StaffItems.')
     .summary('List all StaffItems')
     .description(dd`
   Retrieves a list of all StaffItems.
@@ -65,9 +94,9 @@ router.get('/doctors_info', function (req, res) {
 
 router.post('/login', function (req, res) {
     let member = {};
-    member = staff_members.firstExample({"_key": req.body.login});
+    member = staff_members.firstExample({ "_key": req.body.login });
     if (!member)
-        member = staff_members.firstExample({"email": req.body.login});
+        member = staff_members.firstExample({ "email": req.body.login });
     const valid = auth.verify(
         member ? member.authData : {},
         req.body.password
@@ -77,7 +106,7 @@ router.post('/login', function (req, res) {
     req.session.uid = member._id;
     req.sessionStorage.save(req.session);
     print(req.session)
-    res.send({sucess: true});
+    res.send({ sucess: true });
 })
     .body(joi.object({
         login: joi.string().required(),
@@ -87,9 +116,9 @@ router.post('/login', function (req, res) {
 
 router.post('/login_sqa', function (req, res) {
     let member = {};
-    member = staff_members.firstExample({"_key": req.body.login});
+    member = staff_members.firstExample({ "_key": req.body.login });
     if (!member)
-        member = staff_members.firstExample({"email": req.body.login});
+        member = staff_members.firstExample({ "email": req.body.login });
     let ans = member.security_question.answer;
 
     // print question
@@ -103,7 +132,7 @@ router.post('/login_sqa', function (req, res) {
     req.session.uid = member._id;
     req.sessionStorage.save(req.session);
     print(req.session)
-    res.send({sucess: true});
+    res.send({ sucess: true });
 })
     .body(joi.object({
         login: joi.string().required(),
@@ -123,14 +152,14 @@ router.post('/signup', function (req, res) {
     }
     req.session.uid = member._id;
     req.sessionStorage.save(req.session);
-    res.send({success: true, staff_id: member._key});
+    res.send({ success: true, staff_id: member._key });
 })
     .body(joi.object({
         first_name: joi.string().required(),
         last_name: joi.string().required(),
         birth_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
         ssn: joi.string().regex(/^\d{3}-\d{2}-\d{4}$/).required(),
-        email: joi.string().email({minDomainAtoms: 2}),
+        email: joi.string().email({ minDomainAtoms: 2 }),
         password: joi.string().required(),
         address: joi.object().keys({
             zip: joi.string().required(),
@@ -147,6 +176,8 @@ router.post('/signup', function (req, res) {
     .description('Creates a new staff member and logs them in.');
 
 router.post(function (req, res) {
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.user, permission.staff.create)) res.throw(403, 'Forbidden');
     const staff = req.body;
     let meta;
     try {
@@ -160,7 +191,7 @@ router.post(function (req, res) {
     Object.assign(staff, meta);
     res.status(201);
     res.set('location', req.makeAbsolute(
-        req.reverse('detail', {key: staff._key})
+        req.reverse('detail', { key: staff._key })
     ));
     res.send(staff);
 }, 'create')
@@ -176,6 +207,9 @@ router.post(function (req, res) {
 
 router.get(':key', function (req, res) {
     const key = req.pathParams.key;
+    const staffId = `${staff_members.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.user, permission.staff.view, staffId)) res.throw(403, 'Forbidden');
     let staff
     try {
         staff = StaffItems.document(key);
@@ -197,6 +231,9 @@ router.get(':key', function (req, res) {
 
 router.put(':key', function (req, res) {
     const key = req.pathParams.key;
+    const staffId = `${staff_members.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.user, permission.staff.edit, staffId)) res.throw(403, 'Forbidden');
     const staff = req.body;
     let meta;
     try {
@@ -224,11 +261,11 @@ router.put(':key', function (req, res) {
 
 
 router.patch(':key', function (req, res) {
-
     const key = req.pathParams.key;
     const staffId = `${staff_members.name()}/${key}`;
-    if (!hasPerm(req.session.uid, permission.staff.edit, staffId)) res.throw(403, 'Not authorized');
-    const super_admin = hasPerm(req.session.uid, 'all');
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.user, permission.staff.edit, staffId)) res.throw(403, 'Forbidden');
+    const super_admin = hasPerm(req.user._id, 'all');
     const patchData = req.body;
     let member;
     try {
@@ -266,6 +303,9 @@ router.patch(':key', function (req, res) {
 
 router.delete(':key', function (req, res) {
     const key = req.pathParams.key;
+    const staffId = `${staff_members.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.user, permission.staff.delete, staffId)) res.throw(403, 'Forbidden');
     try {
         StaffItems.remove(key);
     } catch (e) {

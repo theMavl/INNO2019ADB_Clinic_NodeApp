@@ -5,21 +5,23 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+
 const restrict = require('../util/restrict');
 const hasPerm = require('../util/hasPerm');
-const Patient = require('../models/patient');
 const auth = require('../util/auth');
 const permission = require('../util/permissions');
+
+const Patient = require('../models/patient');
 
 const patients = module.context.collection('Patients');
 const perms = module.context.collection('hasPerm');
 const usergroups = module.context.collection('Usergroups');
 const memberOf = module.context.collection('memberOf');
+
 const keySchema = joi.string().required()
   .description('The key of the patient');
-
-const sessionMiddleware = require('@arangodb/foxx/sessions');
-const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
 
 const ARANGO_NOT_FOUND = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 const ARANGO_DUPLICATE = errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
@@ -32,7 +34,7 @@ module.exports = router;
 
 router.use(sessionMiddleware({
   storage: module.context.collection('sessions'),
-  transport: cookieTransport('keyboardcat')
+  transport: cookieTransport(['header', 'cookie'])
 }));
 
 router.tag('patient');
@@ -42,7 +44,6 @@ router.post('/login', function (req, res) {
   patient = patients.firstExample({ "_key": req.body.login });
   if (!patient)
     patient = patients.firstExample({ "email": req.body.login });
-
   const valid = auth.verify(
     patient ? patient.authData : {},
     req.body.password
@@ -76,7 +77,7 @@ router.post('/signup', function (req, res) {
   const group_patient = usergroups.firstExample({ "name": "patient" });
   try {
     patient.authData = auth.create(patient.password);
-    delete patient.password
+    delete patient.password;
     delete patient.perms;
     patient.residential_area = [0.0, 0.0] // TODO: Получить координаты из patient.address
     const meta = patients.save(patient);
@@ -137,11 +138,22 @@ router.post(restrict(permission.patients.create), function (req, res) {
   returns the saved document.
 `);
 
+router.get('/whoami', function (req, res) {
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  try {
+    const user = patients.firstExample("_id", req.session.uid);
+    res.send({ username: user._id });
+  } catch (e) {
+    res.send({ username: null });
+  }
+})
+  .description('Returns the currently active username.');
 
 router.get(':key', function (req, res) {
-  if (!hasPerm(req.user._id, permission.patients.view)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.patients.view, patientId)) res.throw(403, 'Forbidden');
   let patient
   try {
     patient = patients.document(key);
@@ -163,10 +175,11 @@ router.get(':key', function (req, res) {
 
 
 router.put(':key', function (req, res) {
-  if (!hasPerm(req.user._id, permission.patients.edit)) res.throw(403, 'Not authorized');
-  const super_admin = hasPerm(req.user._id, 'all');
+  const super_admin = hasPerm(req.session.uid, 'all');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.patients.edit, patientId)) res.throw(403, 'Forbidden');
   const patient = req.body;
   let meta;
   try {
@@ -205,10 +218,11 @@ router.put(':key', function (req, res) {
 
 
 router.patch(':key', function (req, res) {
-  if (!hasPerm(req.user, permission.patients.edit, patientId)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
-  const super_admin = hasPerm(req.user._id, 'all');
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.patients.edit, patientId)) res.throw(403, 'Forbidden');
+  const super_admin = hasPerm(req.session.uid, 'all');
   const patchData = req.body;
   let patient;
   try {
@@ -246,9 +260,10 @@ router.patch(':key', function (req, res) {
 
 
 router.delete(':key', function (req, res) {
-  if (!hasPerm(req.user, permission.patients.delete)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.patients.delete, patientId)) res.throw(403, 'Forbidden');
   for (const perm of perms.inEdges(patientId)) {
     perms.remove(perm);
   }

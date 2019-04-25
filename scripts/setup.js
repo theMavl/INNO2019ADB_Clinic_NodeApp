@@ -14,7 +14,8 @@ const documentCollections = [
 ];
 const edgeCollections = [
   "hasPerm",
-  "memberOf"
+  "memberOf",
+  "isAppointed"
 ];
 
 for (const localName of documentCollections) {
@@ -79,6 +80,7 @@ try {
 
 const group_overseer = { name: "overseer", perms: ["view_patients"] };
 const group_patient = { name: "patient", perms: ["view_doctors", "add_appointments"] };
+const group_doctor = { name: "doctor", perms: ["approve_reject_appointments", "view_appointments"] };
 const overseer = { email: "overseer" };
 
 try {
@@ -89,8 +91,12 @@ try {
   const meta_go = usergroups.save(group_overseer);
   Object.assign(group_overseer, meta_go);
   print("Overseer Group creator: done");
+
+  const meta_do = usergroups.save(group_doctor);
+  Object.assign(group_doctor, meta_do);
+  print("Doctor Group creator: done");
 } catch (e) {
-  print("Overseer Group creator: " + e);
+  print("Doctor Group creator: " + e);
 }
 try {
   overseer.authData = auth.create("clinicc");
