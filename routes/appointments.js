@@ -11,6 +11,7 @@ const permission = require('../util/permissions');
 const restrict = require('../util/restrict');
 const hasPerm = require('../util/hasPerm');
 const Enumerators = require('../models/enumerators');
+const patients = module.context.collection('Patients');
 
 const Appointments = module.context.collection('Appointments');
 const keySchema = joi.string().required()
@@ -24,6 +25,13 @@ const HTTP_CONFLICT = status('conflict');
 
 const router = createRouter();
 module.exports = router;
+
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+router.use(sessionMiddleware({
+  storage: module.context.collection('sessions'),
+  transport: cookieTransport(['header', 'cookie'])
+}));
 
 
 router.tag('appointment');
@@ -41,11 +49,13 @@ router.get(restrict(permission.appointments.view), function (req, res) {
 
 router.post(restrict(permission.appointments.create), function (req, res) {
   const appointment = req.body;
-  const patient = patients.firstExample("_id", user_id);
+  const patient = patients.firstExample("_id", req.session.uid);
   if (!patient) res.throw(403, 'Not a patient!');
   let meta;
   try {
     appointment.area = patient.residential_area;
+    appointment.payed = false;
+    appointment.status = "New";
     meta = Appointments.save(appointment);
   } catch (e) {
     if (e.isArangoError && e.errorNum === ARANGO_DUPLICATE) {
@@ -54,14 +64,14 @@ router.post(restrict(permission.appointments.create), function (req, res) {
     throw e;
   }
   Object.assign(appointment, meta);
-  perms.save({ _from: req.user._id, _to: appointment._id, name: permission.appointments.view });
-  perms.save({ _from: req.user._id, _to: appointment._id, name: permission.appointments.edit });
-  perms.save({ _from: req.user._id, _to: appointment._id, name: permission.appointments.delete });
+  perms.save({ _from: req.session.uid, _to: appointment._id, name: permission.appointments.view });
+  perms.save({ _from: req.session.uid, _to: appointment._id, name: permission.appointments.edit });
+  perms.save({ _from: req.session.uid, _to: appointment._id, name: permission.appointments.delete });
   res.status(201);
   res.set('location', req.makeAbsolute(
     req.reverse('detail', { key: appointment._key })
   ));
-  res.send(appointment);
+  res.send({ appointment_id: appointment._key });
 }, 'create')
   .body(joi.object({
     symptoms: joi.array().required(),
@@ -70,7 +80,9 @@ router.post(restrict(permission.appointments.create), function (req, res) {
     since_when: joi.date().required(),
     payment_type: joi.string().allow(Enumerators.payment_types),
   }), 'The appointment to create.')
-  .response(201, Appointment, 'The created appointment.')
+  .response(201, joi.object({
+    appointment_id: joi.string().required()
+  }), 'The created appointment.')
   .error(HTTP_CONFLICT, 'The appointment already exists.')
   .summary('Create a new appointment')
   .description(dd`

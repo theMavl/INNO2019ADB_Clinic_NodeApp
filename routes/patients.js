@@ -32,7 +32,7 @@ module.exports = router;
 
 router.use(sessionMiddleware({
   storage: module.context.collection('sessions'),
-  transport: cookieTransport('keyboardcat')
+  transport: cookieTransport(['header', 'cookie'])
 }));
 
 router.tag('patient');
@@ -136,6 +136,15 @@ router.post(restrict(permission.patients.create), function (req, res) {
   returns the saved document.
 `);
 
+router.get('/whoami', function (req, res) {
+  try {
+    const user = patients.firstExample("_id", req.session.uid);
+    res.send({ username: user._id });
+  } catch (e) {
+    res.send({ username: null });
+  }
+})
+  .description('Returns the currently active username.');
 
 router.get(':key', function (req, res) {
   const key = req.pathParams.key;
