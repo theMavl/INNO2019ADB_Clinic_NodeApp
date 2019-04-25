@@ -6,6 +6,10 @@ const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
 const LeaveApply = require('../models/leaveapply');
+const Enumerators = require('../models/enumerators');
+const restrict = require('../util/restrict');
+const hasPerm = require('../util/hasPerm');
+const permission = require('../util/permissions');
 
 const LeaveApplyItems = module.context.collection('LeaveApply');
 const keySchema = joi.string().required()
@@ -24,7 +28,7 @@ module.exports = router;
 router.tag('leaveApply');
 
 
-router.get(function (req, res) {
+router.get(restrict(permission.leave_applies.view), function (req, res) {
   res.send(LeaveApplyItems.all());
 }, 'list')
 .response([LeaveApply], 'A list of LeaveApplyItems.')
@@ -34,7 +38,7 @@ router.get(function (req, res) {
 `);
 
 
-router.post(function (req, res) {
+router.post(restrict(permission.leave_applies.create), function (req, res) {
   const leaveApply = req.body;
   let meta;
   try {
@@ -64,7 +68,9 @@ router.post(function (req, res) {
 
 router.get(':key', function (req, res) {
   const key = req.pathParams.key;
-  let leaveApply
+  const leave_apply_id = `${LeaveApplyItems.name()}/${key}`;
+  if (!hasPerm(req.user, permission.leave_applies.view, leave_apply_id)) res.throw(403, 'Not authorized');
+  let leaveApply;
   try {
     leaveApply = LeaveApplyItems.document(key);
   } catch (e) {
@@ -85,6 +91,8 @@ router.get(':key', function (req, res) {
 
 router.put(':key', function (req, res) {
   const key = req.pathParams.key;
+  const leave_apply_id = `${LeaveApplyItems.name()}/${key}`;
+  if (!hasPerm(req.user, permission.leave_applies.edit, leave_apply_id)) res.throw(403, 'Not authorized');
   const leaveApply = req.body;
   let meta;
   try {
@@ -113,11 +121,14 @@ router.put(':key', function (req, res) {
 
 router.patch(':key', function (req, res) {
   const key = req.pathParams.key;
-  const patchData = req.body;
-  let leaveApply;
+  const leave_apply_id = `${LeaveApplyItems.name()}/${key}`;
+  if (!hasPerm(req.user, permission.leave_applies.edit, leave_apply_id)) res.throw(403, 'Not authorized');
+  let apply;
   try {
-    LeaveApplyItems.update(key, patchData);
-    leaveApply = LeaveApplyItems.document(key);
+    apply = LeaveApplyItems.document(key);
+    apply.status = req.body.status;
+    LeaveApplyItems.update(key, apply);
+    apply = LeaveApplyItems.document(key);
   } catch (e) {
     if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
       throw httpError(HTTP_NOT_FOUND, e.message);
@@ -127,20 +138,24 @@ router.patch(':key', function (req, res) {
     }
     throw e;
   }
-  res.send(leaveApply);
-}, 'update')
-.pathParam('key', keySchema)
-.body(joi.object().description('The data to update the leaveApply with.'))
-.response(LeaveApply, 'The updated leaveApply.')
-.summary('Update a leaveApply')
-.description(dd`
-  Patches a leaveApply with the request body and
+  res.send(apply);
+}, 'replace')
+    .pathParam('key', keySchema)
+    .body(joi.object({
+      status: joi.string().valid(Enumerators.reviewed_leave_apply_status).required()
+    }).required(), 'Status')
+    .response(LeaveApply, 'The updated leaveApply.')
+    .summary('Update a leaveApply')
+    .description(dd`
+  Patches a leaveApply with a new status and
   returns the updated document.
 `);
 
 
 router.delete(':key', function (req, res) {
   const key = req.pathParams.key;
+  const leave_apply_id = `${LeaveApplyItems.name()}/${key}`;
+  if (!hasPerm(req.user, permission.leave_applies.delete, leave_apply_id)) res.throw(403, 'Not authorized');
   try {
     LeaveApplyItems.remove(key);
   } catch (e) {

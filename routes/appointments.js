@@ -37,6 +37,16 @@ router.get(restrict(permission.appointments.view), function (req, res) {
   Retrieves a list of all Appointments.
 `);
 
+router.get('/rejected', function (req, res) {
+  if (!hasPerm(req.user, permission.appointments.view)) res.throw(403, 'Not authorized');
+  res.send(Appointments.byExample( {'status': 'Rejected'} ));
+}, 'list')
+    .response([Appointment], 'A list of rejected Appointments.')
+    .summary('List all rejected Appointments')
+    .description(dd`
+  Retrieves a list of all rejected Appointments.
+`);
+
 
 router.post(restrict(permission.appointments.create), function (req, res) {
   const appointment = req.body;
@@ -75,7 +85,7 @@ router.post(restrict(permission.appointments.create), function (req, res) {
 router.get(':key', function (req, res) {
   const key = req.pathParams.key;
   const appointmentId = `${Appointments.name()}/${key}`;
-  if (!hasPerm(req.user._id, permission.appointments.view, appointmentId)) res.throw(403, 'Not authorized');
+  if (!hasPerm(req.user, permission.appointments.view, appointmentId)) res.throw(403, 'Not authorized');
   let appointment;
   try {
     appointment = Appointments.document(key);
@@ -96,6 +106,7 @@ router.get(':key', function (req, res) {
 
 
 router.put(':key', function (req, res) {
+  if (!hasPerm(req.user, permission.appointments.edit)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const appointment = req.body;
   let meta;
@@ -125,7 +136,7 @@ router.put(':key', function (req, res) {
 router.put(':key/assign', function (req, res) {
   const key = req.pathParams.key;
   const appointmentId = `${Appointments.name()}/${key}`;
-  if (!hasPerm(req.user._id, permission.appointments.assign, appointmentId)) res.throw(403, 'Not authorized');
+  if (!hasPerm(req.user, permission.appointments.assign, appointmentId)) res.throw(403, 'Not authorized');
   let meta;
   try {
     meta = Appointments.replace(key, appointment);
@@ -154,6 +165,8 @@ router.put(':key/assign', function (req, res) {
 
 router.patch(':key', function (req, res) {
   const key = req.pathParams.key;
+  const appointmentId = `${Appointments.name()}/${key}`;
+  if (!hasPerm(req.user, permission.appointments.edit, appointmentId)) res.throw(403, 'Not authorized');
   const patchData = req.body;
   let appointment;
   try {
@@ -180,8 +193,44 @@ router.patch(':key', function (req, res) {
 `);
 
 
+router.patch(':key/cancel', function (req, res) {
+  const key = req.pathParams.key;
+  const appointmentId = `${Appointments.name()}/${key}`;
+  if (!hasPerm(req.user, permission.appointments.edit, appointmentId)) res.throw(403, 'Not authorized');
+  let appointment;
+  try {
+    appointment = Appointments.document(key);
+    appointment.status = req.body.status;
+    Appointments.update(key, appointment);
+    appointment = Appointments.document(key);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
+      throw httpError(HTTP_CONFLICT, e.message);
+    }
+    throw e;
+  }
+
+  res.send(appointment);
+}, 'update')
+    .pathParam('key', keySchema)
+    .body(joi.object({
+      status: joi.string().valid('Cancelled').required()
+    }).description('The data to update the appointment with.'))
+    .response(Appointment, 'The cancelled appointment.')
+    .summary('Cancel an appointment')
+    .description(dd`
+  Patches a appointment with the request body and
+  returns the updated document.
+`);
+
+
 router.delete(':key', function (req, res) {
   const key = req.pathParams.key;
+  const appointmentId = `${Appointments.name()}/${key}`;
+  if (!hasPerm(req.user, permission.appointments.delete, appointmentId)) res.throw(403, 'Not authorized');
   try {
     Appointments.remove(key);
   } catch (e) {

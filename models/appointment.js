@@ -14,10 +14,10 @@ module.exports = {
     description: joi.string().required(),
     date_created: joi.date().required(),
     since_when: joi.date().required(),
-    payment_type: joi.string().allow(Enumerators.payment_types),
+    payment_type: joi.string().valid(Enumerators.payment_types),
     payed: joi.bool().required(),
     urgent: joi.bool(),
-    status: joi.string().allow(Enumerators.appointment_status),
+    status: joi.string().valid(Enumerators.appointment_status),
     appointment_date: joi.date(),
     cancel_reason: joi.string(),
     reject_reason: joi.string()    

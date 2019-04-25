@@ -11,7 +11,7 @@ module.exports = {
     leave_reason: joi.string().required(),
     beginning_date: joi.date().required(),
     ending_date: joi.date().required(),
-    status: joi.string().allow(Enumerators.leave_apply_status),
+    status: joi.string().valid(Enumerators.leave_apply_status),
     _key: joi.string()
   },
   forClient(obj) {
