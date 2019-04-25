@@ -44,6 +44,25 @@ router.get(function (req, res) {
   Retrieves a list of all StaffItems.
 `);
 
+router.get('/doctors_info', function (req, res) {
+    const members = db._query(aql`FOR s IN ${staff_members} FILTER s.first_name != null RETURN { 
+        first_name: s.first_name, 
+        last_name: s.last_name,
+        doctor_designation: s.doctor_designation
+    }`);
+    res.send(members);
+}, 'list')
+    .response([joi.object({
+        first_name: joi.string().required(),
+        last_name: joi.string().required(),
+        doctor_designation: joi.string().valid(Enumerators.doctor_designations)
+    })], 'Doctors')
+    .summary('List all Doctors')
+    .description(dd`
+  Retrieves a list of Doctors.
+`);
+
+
 router.post('/login', function (req, res) {
     let member = {};
     member = staff_members.firstExample({"_key": req.body.login});
