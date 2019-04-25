@@ -12,6 +12,7 @@ const restrict = require('../util/restrict');
 const hasPerm = require('../util/hasPerm');
 
 const Appointments = module.context.collection('Appointments');
+const Doctors = module.context.collection('Staff');
 const keySchema = joi.string().required()
   .description('The key of the appointment');
 
@@ -36,6 +37,7 @@ router.get(restrict(permission.appointments.view), function (req, res) {
   .description(dd`
   Retrieves a list of all Appointments.
 `);
+
 
 router.get('/rejected', function (req, res) {
   if (!hasPerm(req.user, permission.appointments.view)) res.throw(403, 'Not authorized');
@@ -105,6 +107,29 @@ router.get(':key', function (req, res) {
 `);
 
 
+router.get(':key/doctor', function (req, res) {
+  const doctor_key = req.pathParams.key;
+  const doctorId = `${Doctors.name()}/${doctor_key}`;
+  if (!hasPerm(doctorId, permission.appointments.view)) res.throw(403, 'Not authorized');
+  let appointments;
+  try {
+    appointments = Appointments.byExample( {'doctor': doctor_key} );
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    throw e;
+  }
+  res.send(appointments);
+}, 'detail')
+    .pathParam('key', keySchema)
+    .response([Appointment], 'A list of Appointments of a particular doctor.')
+    .summary('Fetch doctor\'s appointments')
+    .description(dd`
+  Retrieves a appointment by its key.
+`);
+
+
 router.put(':key', function (req, res) {
   if (!hasPerm(req.user, permission.appointments.edit)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
@@ -132,36 +157,6 @@ router.put(':key', function (req, res) {
   Replaces an existing appointment with the request body and
   returns the new document.
 `);
-
-router.put(':key/assign', function (req, res) {
-  const key = req.pathParams.key;
-  const appointmentId = `${Appointments.name()}/${key}`;
-  if (!hasPerm(req.user, permission.appointments.assign, appointmentId)) res.throw(403, 'Not authorized');
-  let meta;
-  try {
-    meta = Appointments.replace(key, appointment);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
-      throw httpError(HTTP_NOT_FOUND, e.message);
-    }
-    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
-      throw httpError(HTTP_CONFLICT, e.message);
-    }
-    throw e;
-  }
-  Object.assign(appointment, meta);
-  res.send(appointment);
-}, 'replace')
-  .pathParam('key', keySchema)
-  .body(joi.object({
-    doctor: joi.string().required(),
-    datetime: joi.date().required()
-  }).required(), 'Appointment data')
-  .summary('Assign an appointment')
-  .description(dd`
-  Assign the appointment to a given doctor
-`);
-
 
 router.patch(':key', function (req, res) {
   const key = req.pathParams.key;
@@ -193,14 +188,18 @@ router.patch(':key', function (req, res) {
 `);
 
 
-router.patch(':key/cancel', function (req, res) {
+router.patch(':key/approve-reject', function (req, res) {
   const key = req.pathParams.key;
   const appointmentId = `${Appointments.name()}/${key}`;
-  if (!hasPerm(req.user, permission.appointments.edit, appointmentId)) res.throw(403, 'Not authorized');
+  if (!hasPerm(req.user, permission.appointments.approve_reject, appointmentId)) res.throw(403, 'Not authorized');
+  const data = req.body;
   let appointment;
   try {
     appointment = Appointments.document(key);
-    appointment.status = req.body.status;
+    appointment.status = data.status;
+    if (data.reject_reason) {
+      appointment.reject_reason = data.reject_reason;
+    }
     Appointments.update(key, appointment);
     appointment = Appointments.document(key);
   } catch (e) {
@@ -212,12 +211,83 @@ router.patch(':key/cancel', function (req, res) {
     }
     throw e;
   }
+  res.send(appointment);
+}, 'replace')
+    .pathParam('key', keySchema)
+    .body(joi.object({
+      status: joi.string().valid('Approved', 'Rejected').required(),
+      reject_reason: joi.string()
+    }).required(), 'Appointment data')
+    .summary('Assign an appointment')
+    .description(dd`
+  Assign the appointment to a given doctor
+`);
 
+
+router.patch(':key/assign', function (req, res) {
+  const key = req.pathParams.key;
+  const appointmentId = `${Appointments.name()}/${key}`;
+  if (!hasPerm(req.user, permission.appointments.edit, appointmentId)) res.throw(403, 'Not authorized');
+  const data = req.body;
+  let appointment;
+  try {
+    appointment = Appointments.document(key);
+    appointment.status = 'Assigned';
+    appointment.doctor = data.doctor;
+    appointment.appointment_date = data.datetime;
+    Appointments.update(key, appointment);
+    appointment = Appointments.document(key);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
+      throw httpError(HTTP_CONFLICT, e.message);
+    }
+    throw e;
+  }
+  res.send(appointment);
+}, 'replace')
+    .pathParam('key', keySchema)
+    .body(joi.object({
+      doctor: joi.string().required(),
+      datetime: joi.date().required()
+    }).required(), 'Appointment data')
+    .summary('Assign an appointment')
+    .description(dd`
+  Assign the appointment to a given doctor
+`);
+
+
+router.patch(':key/cancel', function (req, res) {
+  const key = req.pathParams.key;
+  const appointmentId = `${Appointments.name()}/${key}`;
+  if (!hasPerm(req.user, permission.appointments.edit, appointmentId)) res.throw(403, 'Not authorized');
+  let appointment;
+  const data = req.body;
+  try {
+    appointment = Appointments.document(key);
+    appointment.status = data.status;
+    if (data.cancel_reason) {
+      appointment.cancel_reason = data.cancel_reason;
+    }
+    Appointments.update(key, appointment);
+    appointment = Appointments.document(key);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
+      throw httpError(HTTP_CONFLICT, e.message);
+    }
+    throw e;
+  }
   res.send(appointment);
 }, 'update')
     .pathParam('key', keySchema)
     .body(joi.object({
-      status: joi.string().valid('Cancelled').required()
+      status: joi.string().valid('Cancelled').required(),
+      cancel_reason: joi.string()
     }).description('The data to update the appointment with.'))
     .response(Appointment, 'The cancelled appointment.')
     .summary('Cancel an appointment')

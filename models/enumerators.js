@@ -36,7 +36,7 @@ module.exports = {
 
     payment_types: ["Cash", "Credit card", "Free"],
 
-    appointment_status: ["New", "Reviewed", "Assigned", "Completed", "Rejected", "Cancelled"],
+    appointment_status: ["New", "Assigned", "Completed", "Approved", "Rejected", "Cancelled"],
 
     leave_apply_status: ["New", "Approved", "Rejected"],
 

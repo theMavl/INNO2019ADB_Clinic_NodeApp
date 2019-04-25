@@ -7,6 +7,7 @@ module.exports = {
         // Describe the attributes with joi here
         _key: joi.string(),
         date: joi.date().required(),
+        description: joi.string(),
         time: joi.string().regex(/^(?:\d|[01]\d|2[0-3]):[0-5]\d$/).required()
     },
     forClient(obj) {

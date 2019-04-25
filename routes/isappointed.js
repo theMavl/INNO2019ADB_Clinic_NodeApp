@@ -11,6 +11,7 @@ const IsAppointed = require('../models/isappointed');
 const permission = require('../util/permissions');
 
 const isAppointedItems = module.context.collection('isAppointed');
+const Doctors = module.context.collection('Staff');
 const keySchema = joi.string().required()
     .description('The key of the isAppointed');
 
@@ -46,7 +47,7 @@ router.get(restrict(permission.appointments.view), function (req, res) {
 `);
 
 
-router.post(restrict(permission.appointments.create), function (req, res) {
+router.post(function (req, res) {
     const isAppointed = req.body;
     let meta;
     try {
@@ -93,6 +94,29 @@ router.get(':key', function (req, res) {
     .summary('Fetch an isAppointed')
     .description(dd`
   Retrieves an isAppointed by its key.
+`);
+
+
+router.get(':key/doctor', function (req, res) {
+    const doctor_key = req.pathParams.key;
+    const doctorId = `${Doctors.name()}/${doctor_key}`;
+    if (!hasPerm(doctorId, permission.appointments.view)) res.throw(403, 'Not authorized');
+    let isAppointed;
+    try {
+        isAppointed = isAppointedItems.byExample( {'_from': doctorId} );
+    } catch (e) {
+        if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+            throw httpError(HTTP_NOT_FOUND, e.message);
+        }
+        throw e;
+    }
+    res.send(isAppointed);
+}, 'detail')
+    .pathParam('key', keySchema)
+    .response([IsAppointed], 'The schedule')
+    .summary('Fetch an schedule of a specific doctor')
+    .description(dd`
+  Retrieves a schedule by key of a doctor.
 `);
 
 
