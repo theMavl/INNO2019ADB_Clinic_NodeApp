@@ -20,8 +20,8 @@ module.exports = {
       street: joi.string().required(),
       building: joi.string().required()
     }),
-    designation: joi.string().allow(Enumerators.staff_designations),
-    doctor_designation: joi.string().allow(Enumerators.doctor_designations),
+    designation: joi.string().valid(Enumerators.staff_designations),
+    doctor_designation: joi.string().valid(Enumerators.doctor_designations),
     security_question: joi.object().keys({
         question: joi.string().required(),
         answer: joi.string().required()

@@ -38,7 +38,9 @@ module.exports = {
 
     appointment_status: ["New", "Reviewed", "Assigned", "Completed", "Rejected", "Cancelled"],
 
-    leave_apply_status: ["New", "Approved", "Rejected"], 
+    leave_apply_status: ["New", "Approved", "Rejected"],
+
+    reviewed_leave_apply_status: ["Approved", "Rejected"],
 
     blood_types: ["I", "II", "III", "IV"]
-}
+};

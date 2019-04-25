@@ -21,6 +21,13 @@ module.exports = {
         assign: "assign_appointments"
     },
 
+    leave_applies: {
+        create: "add_leave_applies",
+        edit: "change_leave_applies",
+        delete: "remove_leave_applies",
+        view: "view_leave_applies",
+    },
+
     tips: {
         create: "add_tips",
         edit: "change_tips",
@@ -40,4 +47,4 @@ module.exports = {
         delete: "remove_usergroups",
         view: "view_usergroups",
     }
-}
+};
