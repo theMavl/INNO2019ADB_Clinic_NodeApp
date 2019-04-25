@@ -7,7 +7,6 @@ const Enumerators = require('../models/enumerators');
 module.exports = {
   schema: {
     // Describe the attributes with joi here
-    _key: joi.string(),
     patient: joi.string().required(),
     doctor: joi.string(),
     symptoms: joi.array().required(),

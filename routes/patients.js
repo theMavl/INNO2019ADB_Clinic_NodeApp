@@ -42,7 +42,6 @@ router.post('/login', function (req, res) {
   patient = patients.firstExample({ "_key": req.body.login });
   if (!patient)
     patient = patients.firstExample({ "email": req.body.login });
-
   const valid = auth.verify(
     patient ? patient.authData : {},
     req.body.password
@@ -76,7 +75,7 @@ router.post('/signup', function (req, res) {
   const group_patient = usergroups.firstExample({ "name": "patient" });
   try {
     patient.authData = auth.create(patient.password);
-    delete patient.password
+    delete patient.password;
     delete patient.perms;
     patient.residential_area = [0.0, 0.0] // TODO: Получить координаты из patient.address
     const meta = patients.save(patient);

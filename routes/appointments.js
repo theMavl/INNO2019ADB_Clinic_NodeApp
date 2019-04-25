@@ -10,6 +10,7 @@ const perms = module.context.collection('hasPerm');
 const permission = require('../util/permissions');
 const restrict = require('../util/restrict');
 const hasPerm = require('../util/hasPerm');
+const Enumerators = require('../models/enumerators');
 
 const Appointments = module.context.collection('Appointments');
 const keySchema = joi.string().required()
@@ -62,7 +63,13 @@ router.post(restrict(permission.appointments.create), function (req, res) {
   ));
   res.send(appointment);
 }, 'create')
-  .body(Appointment, 'The appointment to create.')
+  .body(joi.object({
+    symptoms: joi.array().required(),
+    description: joi.string().required(),
+    date_created: joi.date().required(),
+    since_when: joi.date().required(),
+    payment_type: joi.string().allow(Enumerators.payment_types),
+  }), 'The appointment to create.')
   .response(201, Appointment, 'The created appointment.')
   .error(HTTP_CONFLICT, 'The appointment already exists.')
   .summary('Create a new appointment')
