@@ -1,6 +1,8 @@
 'use strict';
 const dd = require('dedent');
 const joi = require('joi');
+const db = require('@arangodb').db;
+const aql = require('@arangodb').aql;
 const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
@@ -18,6 +20,7 @@ const Patient = require('../models/patient');
 const patients = module.context.collection('Patients');
 const perms = module.context.collection('hasPerm');
 const usergroups = module.context.collection('Usergroups');
+const addresses = module.context.collection('Addresses');
 const memberOf = module.context.collection('memberOf');
 
 const keySchema = joi.string().required()
@@ -79,7 +82,17 @@ router.post('/signup', function (req, res) {
     patient.authData = auth.create(patient.password);
     delete patient.password;
     delete patient.perms;
-    patient.residential_area = [0.0, 0.0] // TODO: Получить координаты из patient.address
+    var addr = patient.address.street + ', ' + patient.address.building;
+    const address = addresses.firstExample({ "address": addr });
+
+    var area;
+    if (address === null) {
+      area = [0.0, 0.0]
+    } else {
+      area = address.coordinate
+    }
+
+    patient.residential_area = area;
     const meta = patients.save(patient);
     Object.assign(patient, meta);
     memberOf.save({ _from: patient._id, _to: group_patient._id });
@@ -114,7 +127,18 @@ router.post(restrict(permission.patients.create), function (req, res) {
   try {
     patient.authData = auth.create(patient.password);
     delete patient.password;
-    patient.residential_area = [0.0, 0.0] // TODO: Получить координаты из patient.address
+
+    var addr = patient.address.street + ', ' + patient.address.building;
+    const address = addresses.firstExample({ "address": addr });
+
+    var area;
+    if (address === null) {
+      area = [0.0, 0.0]
+    } else {
+      area = address.coordinate
+    }
+
+    patient.residential_area = area;
     meta = patients.save(patient);
   } catch (e) {
     if (e.isArangoError && e.errorNum === ARANGO_DUPLICATE) {
