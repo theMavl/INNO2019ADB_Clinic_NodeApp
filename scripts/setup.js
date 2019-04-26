@@ -113,9 +113,14 @@ try {
 const group_overseer = { name: "overseer", perms: ["view_patients"] };
 const group_patient = { name: "patient", perms: ["view_doctors", "add_appointments"] };
 const group_doctor = { name: "doctor", perms: ["approve_reject_appointments", "view_appointments"] };
+const group_staff = { name: "staff", perms: ["add_leave_applies"] };
 const overseer = { email: "overseer" };
 
 try {
+  const meta_st = usergroups.save(group_staff);
+  Object.assign(group_staff, meta_st);
+  print("Staff Group creator: done");
+
   const meta_pa = usergroups.save(group_patient);
   Object.assign(group_patient, meta_pa);
   print("Patient Group creator: done");
