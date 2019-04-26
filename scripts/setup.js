@@ -44,6 +44,7 @@ const patients = module.context.collection('Patients');
 const appointments = module.context.collection('Appointments');
 const tips = module.context.collection('Tips');
 const leave_apply = module.context.collection('LeaveApply');
+const facilities = module.context.collection('Facilities');
 
 patients.ensureIndex({
   type: 'hash',
@@ -90,7 +91,13 @@ appointments.ensureIndex({
 
 tips.ensureIndex({ 
   type: 'fulltext', 
-  fields: ['name'], 
+  fields: ['text'], 
+  minLength: 3 
+});
+
+facilities.ensureIndex({ 
+  type: 'fulltext', 
+  fields: ['description'], 
   minLength: 3 
 });
 

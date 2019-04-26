@@ -314,6 +314,7 @@ router.patch(':key/assign', function (req, res) {
     appointment.appointment_date = data.datetime;
     Appointments.update(key, appointment);
     appointment = Appointments.document(key);
+    isAppointed.save({ _from: `${Staff.name()}/${data.doctor}`, _to: appointment._id, datetime: data.datetime });
   } catch (e) {
     if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
       throw httpError(HTTP_NOT_FOUND, e.message);
