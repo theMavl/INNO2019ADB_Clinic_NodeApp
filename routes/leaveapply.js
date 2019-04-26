@@ -16,6 +16,7 @@ const LeaveApply = require('../models/leaveapply');
 const Enumerators = require('../models/enumerators');
 
 const LeaveApplyItems = module.context.collection('LeaveApply');
+const perms = module.context.collection('hasPerm');
 
 const keySchema = joi.string().required()
     .description('The key of the leaveApply');
@@ -58,11 +59,12 @@ router.post(restrict(permission.leave_applies.create), function (req, res) {
         res.throw('bad request', 'Apply already exists!', e);
     }
 
-    const valid = (req.session.uid === req.body.member);
-    if (!valid) res.throw('unauthorized');
-
     req.session.uid = new_apply._id;
     req.sessionStorage.save(req.session);
+
+    perms.save({ _from: req.session.uid, _to: new_apply._id, name: permission.leave_applies.view });
+    perms.save({ _from: req.session.uid, _to: new_apply._id, name: permission.leave_applies.edit });
+    perms.save({ _from: req.session.uid, _to: new_apply._id, name: permission.leave_applies.cancel });
     res.send({success: true, apply_id: new_apply._key});
 }).body(joi.object({
     leave_reason: joi.string().required(),
