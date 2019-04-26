@@ -46,7 +46,7 @@ router.get(restrict(permission.appointments.view), function (req, res) {
   .response([Appointment], 'A list of Appointments.')
   .summary('List all Appointments')
   .description(dd`
-  Retrieves a list of all Appointments.
+  Retrieves a list of all Appointments. Permission '${permission.appointments.view}' is required.
 `);
 
 
@@ -58,7 +58,7 @@ router.get('/rejected', function (req, res) {
   .response([Appointment], 'A list of rejected Appointments.')
   .summary('List all rejected Appointments')
   .description(dd`
-  Retrieves a list of all rejected Appointments.
+  Retrieves a list of all rejected Appointments. Permission '${permission.appointments.view}' is required.
 `);
 
 
@@ -103,8 +103,10 @@ router.post(restrict(permission.appointments.create), function (req, res) {
   .summary('Create a new appointment')
   .description(dd`
   Creates a new appointment from the request body and
-  returns the saved document.
+  returns the saved document. Permission '${permission.appointments.create}' is required.
 `);
+
+
 
 
 router.get(':key', function (req, res) {
@@ -127,7 +129,7 @@ router.get(':key', function (req, res) {
   .response(Appointment, 'The appointment.')
   .summary('Fetch a appointment')
   .description(dd`
-  Retrieves a appointment by its key.
+  Retrieves a appointment by its key. Permission '${permission.appointments.view}' is required.
 `);
 
 
@@ -150,7 +152,7 @@ router.get('/doctor', function (req, res) {
     .response([Appointment], 'A list of Appointments of a particular doctor.')
     .summary('Fetch doctor\'s appointments')
     .description(dd`
-  Retrieves a appointment by its key.
+  Retrieves a list of Appointments of a particular doctor. Permission '${permission.appointments.view}' is required.
 `);
 
 
@@ -180,14 +182,14 @@ router.put(':key', function (req, res) {
   .summary('Replace a appointment')
   .description(dd`
   Replaces an existing appointment with the request body and
-  returns the new document.
+  returns the new document. Permission '${permission.appointments.edit}' is required.
 `);
 
 router.patch(':key', function (req, res) {
   const key = req.pathParams.key;
   const appointmentId = `${appointment.name()}/${key}`;
   if (!req.session.uid) res.throw(401, 'Unauthorized');
-  if (!hasPerm(req.session.uid, permission.appointments.assign)) res.throw(403, 'Forbidden');
+  if (!hasPerm(req.session.uid, permission.appointments.edit)) res.throw(403, 'Forbidden');
   let meta;
   try {
     const appointment = appointments.firstExample({'_key': key});
@@ -216,7 +218,7 @@ router.patch(':key', function (req, res) {
   .summary('Update a appointment')
   .description(dd`
   Patches a appointment with the request body and
-  returns the updated document.
+  returns the updated document. Permission '${permission.appointments.edit}' is required.
 `);
 
 
@@ -253,7 +255,7 @@ router.patch(':key/approve', function (req, res) {
     }).required(), 'Appointment data')
     .summary('Approve an appointment')
     .description(dd`
-  Approve an appointment by a doctor
+  Approve an appointment by a doctor. Permission '${permission.appointments.approve_reject}' is required.
 `);
 
 
@@ -290,7 +292,7 @@ router.patch(':key/reject', function (req, res) {
     }).required(), 'Appointment data')
     .summary('Reject an appointment')
     .description(dd`
-  Reject an appointment by a doctor
+  Reject an appointment by a doctor. Permission '${permission.appointments.approve_reject}' is required.
 `);
 
 
@@ -298,8 +300,8 @@ router.patch(':key/assign', function (req, res) {
   const key = req.pathParams.key;
   const appointmentId = `${appointments.name()}/${key}`;
   if (!req.session.uid) res.throw(401, 'Unauthorized');
-  if (!hasPerm(req.session.uid, permission.appointments.edit, appointmentId)) res.throw(403, 'Forbidden');
-  const patchData = req.body;
+  if (!hasPerm(req.session.uid, permission.appointments.assign, appointmentId)) res.throw(403, 'Forbidden');
+  const data = req.body;
   let appointment;
   try {
     appointment = appointments.document(key);
@@ -326,7 +328,7 @@ router.patch(':key/assign', function (req, res) {
     }).required(), 'Appointment data')
     .summary('Assign an appointment')
     .description(dd`
-  Assign the appointment to a given doctor
+  Assign the appointment to a given doctor. Permission '${permission.appointments.assign}' is required.
 `);
 
 
@@ -334,7 +336,7 @@ router.patch(':key/cancel', function (req, res) {
   const key = req.pathParams.key;
   const appointmentId = `${appointments.name()}/${key}`;
   if (!req.session.uid) res.throw(401, 'Unauthorized');
-  if (!hasPerm(req.session.uid, permission.appointments.edit, appointmentId)) res.throw(403, 'Forbidden');
+  if (!hasPerm(req.session.uid, permission.appointments.cancel, appointmentId)) res.throw(403, 'Forbidden');
   let appointment;
   const data = req.body;
   try {
@@ -364,7 +366,7 @@ router.patch(':key/cancel', function (req, res) {
   .summary('Cancel an appointment')
   .description(dd`
   Patches a appointment with the request body and
-  returns the updated document.
+  returns the updated document. Permission '${permission.appointments.cancel}' is required.
 `);
 
 
@@ -386,5 +388,34 @@ router.delete(':key', function (req, res) {
   .response(null)
   .summary('Remove a appointment')
   .description(dd`
-  Deletes a appointment from the database.
+  Deletes a appointment from the database. Permission '${permission.appointments.delete}' is required.
+`);
+
+
+router.patch(':key/pay', function (req, res) {
+  const key = req.pathParams.key;
+  const appointmentId = `${appointments.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.appointments.edit, appointmentId)) res.throw(403, 'Forbidden');
+  let appointment;
+  const data = req.body;
+  try {
+    appointment = appointments.document(key);
+    appointment.payed = true;
+    appointments.update(key, appointment);
+  } catch (e) {
+    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+      throw httpError(HTTP_NOT_FOUND, e.message);
+    }
+    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
+      throw httpError(HTTP_CONFLICT, e.message);
+    }
+    throw e;
+  }
+  res.send({success: true});
+}, 'update')
+  .pathParam('key', keySchema)
+  .summary('Pay for an appointment')
+  .description(dd`
+  End-point for payment operation. Permission '${permission.appointments.edit}' is required.
 `);

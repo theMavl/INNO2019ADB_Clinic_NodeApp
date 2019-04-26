@@ -9,7 +9,6 @@ const documentCollections = [
   "Staff",
   "Tips",
   "Visitors",
-  "Users",
   "Usergroups"
 ];
 const edgeCollections = [
@@ -40,18 +39,24 @@ const staff = module.context.collection('Staff');
 const memberOf = module.context.collection('memberOf');
 const usergroups = module.context.collection('Usergroups');
 const patients = module.context.collection('Patients');
-const users = module.context.collection('Users');
-
-users.ensureIndex({
-  type: 'hash',
-  fields: ['username'],
-  unique: true
-});
+const appointments = module.context.collection('Appointments');
+const tips = module.context.collection('Tips');
+const leave_apply = module.context.collection('LeaveApply');
 
 patients.ensureIndex({
   type: 'hash',
   fields: ['email'],
   unique: true
+});
+
+patients.ensureIndex({
+  type: 'hash',
+  fields: ['first_name', 'last_name']
+});
+
+patients.ensureIndex({ 
+  type: "geo", 
+  fields: [ "residential_area" ] 
 });
 
 staff.ensureIndex({
@@ -60,11 +65,38 @@ staff.ensureIndex({
   unique: true
 });
 
+staff.ensureIndex({
+  type: 'hash',
+  fields: ['first_name', 'last_name']
+});
+
 usergroups.ensureIndex({
   type: 'hash',
   fields: ['name'],
   unique: true
 });
+
+appointments.ensureIndex({ 
+  type: 'geo', 
+  fields: ['area'] 
+});
+
+appointments.ensureIndex({ 
+  type: 'skiplist', 
+  fields: ['since_when', 'date_created'] 
+});
+
+tips.ensureIndex({ 
+  type: 'fulltext', 
+  fields: ['name'], 
+  minLength: 3 
+});
+
+leave_apply.ensureIndex({
+  type: 'hash',
+  fields: ['member'],
+  unique: false
+})
 
 const auth = require('../util/auth');
 try {

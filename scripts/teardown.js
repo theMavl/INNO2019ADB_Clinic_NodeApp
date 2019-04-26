@@ -10,12 +10,9 @@ const collections = [
   "Staff",
   "Tips",
   "Visitors",
-  "Users",
   "Usergroups",
   "hasPerm",
-  "memberOf",
-  "patient_profile",
-  "staff_profile"
+  "memberOf"
 ];
 
 for (const localName of collections) {

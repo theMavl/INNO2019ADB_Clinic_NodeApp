@@ -106,38 +106,64 @@ router.post('/login', function (req, res) {
     req.session.uid = member._id;
     req.sessionStorage.save(req.session);
     print(req.session)
-    res.send({ sucess: true });
+    res.send(200, { sucess: true });
 })
     .body(joi.object({
         login: joi.string().required(),
         password: joi.string().required()
     }).required(), 'Credentials')
+    .response(200, 'Logged in successfully.')
+    .response(401, 'Bad credentials.')
     .description('Logs a registered staff member in.');
+
+router.patch('/change_password', function (req, res) {
+    let member = {};
+    member = staff_members.firstExample({ "_key": req.session.uid });
+    if (!member)
+        member = staff_members.firstExample({ "email": req.session.uid });
+    const valid = auth.verify(
+        member ? member.authData : {},
+        req.body.current_password
+    );
+    if (!valid) res.throw(403);
+
+    member.authData = auth.create(req.body.new_password);
+    staff_members.update(member._key, member);
+    res.send(200, { sucess: true });
+}, 'update')
+    .body(joi.object({
+        current_password: joi.string().required(),
+        new_password: joi.string().required()
+    }).required(), 'Credentials')
+    .response(200, 'Password changed successfully.')
+    .response(403, 'Bad credentials.')
+    .description('Change password');
+
 
 router.post('/login_sqa', function (req, res) {
     let member = {};
     member = staff_members.firstExample({ "_key": req.body.login });
     if (!member)
         member = staff_members.firstExample({ "email": req.body.login });
-    let ans = member.security_question.answer;
-
-    // print question
-    let ques = member.security_question.question;
-    console.log(ques);
-
-    const valid = (ans === req.body.answer);
-
-    if (!valid) res.throw('unauthorized');
-    print("STAFF AUTH " + member._key, +" " + member)
-    req.session.uid = member._id;
-    req.sessionStorage.save(req.session);
-    print(req.session)
-    res.send({ sucess: true });
+    let ok = false;
+    if (!member.security_questions) res.throw(404);
+    for (var i = 0; i < member.security_questions.length; i++) {
+        if (member.security_questions[i].answer === req.body.answer) {
+            req.session.uid = member._id;
+            req.sessionStorage.save(req.session);
+            print(req.session)
+            res.send({ sucess: true });
+            ok = true;
+        }
+        str = str + i;
+    }
+    if (!ok) res.throw('unauthorized');
 })
     .body(joi.object({
         login: joi.string().required(),
         answer: joi.string().required()
     }).required(), 'Credentials')
+    .response(404, 'User has no sequrity questions.')
     .description('Logs a registered staff member in.');
 
 router.post('/signup', function (req, res) {
@@ -173,6 +199,7 @@ router.post('/signup', function (req, res) {
             answer: joi.string().required()
         })
     }).required(), 'Credentials')
+    .response(400, 'Email already exists.')
     .description('Creates a new staff member and logs them in.');
 
 router.post(function (req, res) {
@@ -199,6 +226,9 @@ router.post(function (req, res) {
     .response(201, Staff, 'The created staff.')
     .error(HTTP_CONFLICT, 'The staff already exists.')
     .summary('Create a new staff')
+    .response(201, 'OK')
+    .response(401, 'Signed out.')
+    .response(403, 'Insufficient permissions.')
     .description(dd`
   Creates a new staff from the request body and
   returns the saved document.
@@ -219,10 +249,12 @@ router.get(':key', function (req, res) {
         }
         throw e;
     }
-    res.send(staff);
+    res.send(200, staff);
 }, 'detail')
     .pathParam('key', keySchema)
-    .response(Staff, 'The staff.')
+    .response(200, Staff, 'OK')
+    .response(401, 'Signed out.')
+    .response(403, 'Insufficient permissions.')
     .summary('Fetch a staff')
     .description(dd`
   Retrieves a staff by its key.
@@ -248,11 +280,13 @@ router.put(':key', function (req, res) {
         throw e;
     }
     Object.assign(staff, meta);
-    res.send(staff);
+    res.send(200, staff);
 }, 'replace')
     .pathParam('key', keySchema)
     .body(Staff, 'The data to replace the staff with.')
-    .response(Staff, 'The new staff.')
+    .response(200, Staff, 'OK')
+    .response(401, 'Signed out.')
+    .response(403, 'Insufficient permissions.')
     .summary('Replace a staff')
     .description(dd`
   Replaces an existing staff with the request body and
@@ -290,11 +324,13 @@ router.patch(':key', function (req, res) {
         delete member.perms;
         delete member.authData;
     }
-    res.send(member);
+    res.send(200, member);
 }, 'update')
     .pathParam('key', keySchema)
     .body(joi.object().description('The data to update the member with.'))
-    .response(Staff, 'The updated member.')
+    .response(200, Staff, 'The updated member.')
+    .response(401, 'Signed out.')
+    .response(403, 'Insufficient permissions.')
     .summary('Update a member')
     .description(dd`
   Patches a member with the request body and
@@ -314,9 +350,12 @@ router.delete(':key', function (req, res) {
         }
         throw e;
     }
+    res.send(200, { success: true });
 }, 'delete')
     .pathParam('key', keySchema)
-    .response(null)
+    .response(200, "OK")
+    .response(401, 'Signed out.')
+    .response(403, 'Insufficient permissions.')
     .summary('Remove a staff')
     .description(dd`
   Deletes a staff from the database.
@@ -324,9 +363,9 @@ router.delete(':key', function (req, res) {
 
 router.post('/logout', function (req, res) {
     if (req.session.uid) {
-      req.session.uid = null;
-      req.sessionStorage.save(req.session);
+        req.session.uid = null;
+        req.sessionStorage.save(req.session);
     }
-    res.send({success: true});
-  })
-  .description('Logs the current staff member out.');
+    res.send(200, { success: true });
+})
+    .description('Logs the current staff member out.');

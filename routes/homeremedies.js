@@ -7,6 +7,12 @@ const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
 const sessionMiddleware = require('@arangodb/foxx/sessions');
 const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+const db = require('@arangodb').db;
+const aql = require('@arangodb').aql;
+
+const permission = require('../util/permissions');
+const restrict = require('../util/restrict');
+const hasPerm = require('../util/hasPerm');
 
 const HomeRemedy = require('../models/homeremedy');
 
@@ -41,8 +47,22 @@ router.get(function (req, res) {
   Retrieves a list of all HomeRemedies.
 `);
 
+router.get('/search/:phrase', function (req, res) {
+    const phrase = req.pathParams.phrase;
+    print(phrase, HomeRemedies);
+    const remedies = db._query(aql`FOR s IN ${HomeRemedies} 
+    FILTER s.description LIKE ${phrase} OR 
+    s.symptoms LIKE ${phrase} RETURN s`)
+    res.send(remedies);
+})
+    .response([HomeRemedy], 'A list of HomeRemedies.')
+    .summary('Search remedy')
+    .description(dd`
+  Search remedy using phrase.
+`);
 
-router.post(function (req, res) {
+
+router.post(restrict(permission.remedies.create), function (req, res) {
     const homeRemedy = req.body;
     let meta;
     try {
@@ -66,7 +86,7 @@ router.post(function (req, res) {
     .summary('Create a new homeRemedy')
     .description(dd`
   Creates a new homeRemedy from the request body and
-  returns the saved document.
+  returns the saved document. Permission '${permission.remedies.create}' is required.
 `);
 
 
@@ -91,7 +111,7 @@ router.get(':key', function (req, res) {
 `);
 
 
-router.put(':key', function (req, res) {
+router.put(':key', restrict(permission.remedies.edit), function (req, res) {
     const key = req.pathParams.key;
     const homeRemedy = req.body;
     let meta;
@@ -115,11 +135,11 @@ router.put(':key', function (req, res) {
     .summary('Replace a homeRemedy')
     .description(dd`
   Replaces an existing homeRemedy with the request body and
-  returns the new document.
+  returns the new document. Permission '${permission.remedies.edit}' is required.
 `);
 
 
-router.patch(':key', function (req, res) {
+router.patch(':key', restrict(permission.remedies.edit), function (req, res) {
     const key = req.pathParams.key;
     const patchData = req.body;
     let homeRemedy;
@@ -143,11 +163,11 @@ router.patch(':key', function (req, res) {
     .summary('Update a homeRemedy')
     .description(dd`
   Patches a homeRemedy with the request body and
-  returns the updated document.
+  returns the updated document. Permission '${permission.remedies.edit}' is required.
 `);
 
 
-router.delete(':key', function (req, res) {
+router.delete(':key', restrict(permission.remedies.delete), function (req, res) {
     const key = req.pathParams.key;
     try {
         HomeRemedies.remove(key);
@@ -162,5 +182,5 @@ router.delete(':key', function (req, res) {
     .response(null)
     .summary('Remove a homeRemedy')
     .description(dd`
-  Deletes a homeRemedy from the database.
+  Deletes a homeRemedy from the database. Permission '${permission.remedies.delete}' is required.
 `);

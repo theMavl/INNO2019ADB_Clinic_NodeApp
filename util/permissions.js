@@ -36,6 +36,12 @@ module.exports = {
         delete: "remove_tips",
     },
 
+    remedies: {
+        create: "add_remedies",
+        edit: "change_remedies",
+        delete: "remove_remedies",
+    },
+
     permissions: {
         create: "add_permissions",
         edit: "change_permissions",

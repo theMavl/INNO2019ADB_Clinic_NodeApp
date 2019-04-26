@@ -294,3 +294,52 @@ router.post('/logout', function (req, res) {
   res.send({success: true});
 })
 .description('Logs the current patient out.');
+
+router.post('/login_sqa', function (req, res) {
+  let patient = {};
+  patient = patients.firstExample({ "_key": req.body.login });
+  if (!patient)
+    patient = patients.firstExample({ "email": req.body.login });
+  let ok = false;
+  if (!patient.security_questions) res.throw(404);
+  for (var i = 0; i < patient.security_questions.length; i++) {
+      if (patient.security_questions[i].answer === req.body.answer) {
+          req.session.uid = member._id;
+          req.sessionStorage.save(req.session);
+          print(req.session)
+          res.send({ sucess: true });
+          ok = true;
+      }
+      str = str + i;
+  }
+  if (!ok) res.throw('unauthorized');
+})
+  .body(joi.object({
+      login: joi.string().required(),
+      answer: joi.string().required()
+  }).required(), 'Credentials')
+  .response(404, 'User has no sequrity questions.')
+  .description('Logs a registered staff member in.');
+
+  router.patch('/change_password', function (req, res) {
+    let patient = {};
+    patient = patients.firstExample({ "_key": req.session.uid });
+    if (!patient)
+      patient = patients.firstExample({ "email": req.session.uid });
+    const valid = auth.verify(
+        patient ? patient.authData : {},
+        req.body.current_password
+    );
+    if (!valid) res.throw(403);
+
+    patient.authData = auth.create(req.body.new_password);
+    patients.update(patient._key, patient);
+    res.send(200, { sucess: true });
+}, 'update')
+    .body(joi.object({
+        current_password: joi.string().required(),
+        new_password: joi.string().required()
+    }).required(), 'Credentials')
+    .response(200, 'Password changed successfully.')
+    .response(403, 'Bad credentials.')
+    .description('Change password');
