@@ -30,15 +30,15 @@ const router = createRouter();
 module.exports = router;
 
 router.use(sessionMiddleware({
-  storage: module.context.collection('sessions'),
-  transport: cookieTransport(['header', 'cookie'])
+    storage: module.context.collection('sessions'),
+    transport: cookieTransport(['header', 'cookie'])
 }));
 
 router.tag('leaveApply');
 
 
 router.get(restrict(permission.leave_applies.view), function (req, res) {
-  res.send(LeaveApplyItems.all());
+    res.send(LeaveApplyItems.all());
 }, 'list')
     .response([LeaveApply], 'A list of LeaveApplyItems.')
     .summary('List all LeaveApplyItems')
@@ -47,31 +47,28 @@ router.get(restrict(permission.leave_applies.view), function (req, res) {
 `);
 
 
-router.post(function (req, res) {
+router.post(restrict(permission.leave_applies.create), function (req, res) {
     const new_apply = req.body;
     try {
+        new_apply.member = req.session.uid;
+        new_apply.status = 'New';
         const meta = LeaveApplyItems.save(new_apply);
         Object.assign(new_apply, meta);
     } catch (e) {
         res.throw('bad request', 'Apply already exists!', e);
     }
-
-    const valid = (req.session.uid === req.body.member);
-    if (!valid) res.throw('unauthorized');
-
     req.session.uid = new_apply._id;
     req.sessionStorage.save(req.session);
+
     res.send({success: true, apply_id: new_apply._key});
 }).body(joi.object({
-    member: joi.string().required(),
     leave_reason: joi.string().required(),
     beginning_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
-    ending_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
-    status: joi.string().allow(Enumerators.leave_apply_status)
+    ending_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required()
 }).required(), 'Body').description('Creates new LeaveApply');
 
 
-router.get(':key', function (req, res) {
+router.get(':key', restrict(permission.leave_applies.view), function (req, res) {
     const key = req.pathParams.key;
     let leaveApply
     try {
@@ -92,7 +89,7 @@ router.get(':key', function (req, res) {
 `);
 
 
-router.put(':key', function (req, res) {
+router.put(':key',restrict(permission.leave_applies.edit), function (req, res) {
     const key = req.pathParams.key;
     const leaveApply = req.body;
     let meta;
@@ -120,28 +117,28 @@ router.put(':key', function (req, res) {
 `);
 
 
-router.patch(':key', function (req, res) {
-  const key = req.pathParams.key;
-  let apply;
-  try {
-    apply = LeaveApplyItems.document(key);
-    apply.status = req.body.status;
-    LeaveApplyItems.update(key, apply);
-    apply = LeaveApplyItems.document(key);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
-      throw httpError(HTTP_NOT_FOUND, e.message);
+router.patch(':key', restrict(permission.leave_applies.edit),function (req, res) {
+    const key = req.pathParams.key;
+    let apply;
+    try {
+        apply = LeaveApplyItems.document(key);
+        apply.status = req.body.status;
+        LeaveApplyItems.update(key, apply);
+        apply = LeaveApplyItems.document(key);
+    } catch (e) {
+        if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+            throw httpError(HTTP_NOT_FOUND, e.message);
+        }
+        if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
+            throw httpError(HTTP_CONFLICT, e.message);
+        }
+        throw e;
     }
-    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
-      throw httpError(HTTP_CONFLICT, e.message);
-    }
-    throw e;
-  }
-  res.send(apply);
+    res.send(apply);
 }, 'replace')
     .pathParam('key', keySchema)
     .body(joi.object({
-      status: joi.string().valid(Enumerators.reviewed_leave_apply_status).required()
+        status: joi.string().valid(Enumerators.reviewed_leave_apply_status).required()
     }).required(), 'Status')
     .response(LeaveApply, 'The updated leaveApply.')
     .summary('Update a leaveApply')
@@ -151,7 +148,7 @@ router.patch(':key', function (req, res) {
 `);
 
 
-router.delete(':key', function (req, res) {
+router.delete(':key',restrict(permission.leave_applies.delete), function (req, res) {
     const key = req.pathParams.key;
     try {
         LeaveApplyItems.remove(key);
