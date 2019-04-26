@@ -321,3 +321,12 @@ router.delete(':key', function (req, res) {
     .description(dd`
   Deletes a staff from the database.
 `);
+
+router.post('/logout', function (req, res) {
+    if (req.session.uid) {
+      req.session.uid = null;
+      req.sessionStorage.save(req.session);
+    }
+    res.send({success: true});
+  })
+  .description('Logs the current staff member out.');
