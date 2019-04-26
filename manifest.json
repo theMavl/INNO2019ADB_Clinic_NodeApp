@@ -10,27 +10,12 @@
   "engines": {
     "arangodb": "^3.0.0"
   },
-  "author": "B17-08-04",
-  "contributors": [
-    {
-      "name": "Mavl",
-      "email": "email"
-    }
-  ],
+  "author": "B17-08-02",
   "license": "Apache 2",
   "main": "main.js",
   "scripts": {
     "setup": "scripts/setup.js",
     "teardown": "scripts/teardown.js"
   },
-  "files": {
-    "/index.html": "build/index.html",
-    "/app.js": "build/app.js",
-    "/style.css": "build/style.css",
-    "/fonts": "frontend/fonts",
-    "/img": "frontend/img",
-    "/images": "frontend/img"
-  },
-  "defaultDocument": "index.html",
   "tests": "test/**/*.js"
 }
