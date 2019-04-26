@@ -7,22 +7,24 @@ const httpError = require('http-errors');
 const status = require('statuses');
 const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
+const sessionMiddleware = require('@arangodb/foxx/sessions');
+const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+
 const restrict = require('../util/restrict');
 const hasPerm = require('../util/hasPerm');
-const Patient = require('../models/patient');
 const auth = require('../util/auth');
 const permission = require('../util/permissions');
+
+const Patient = require('../models/patient');
 
 const patients = module.context.collection('Patients');
 const perms = module.context.collection('hasPerm');
 const usergroups = module.context.collection('Usergroups');
 const addresses = module.context.collection('Addresses');
 const memberOf = module.context.collection('memberOf');
+
 const keySchema = joi.string().required()
   .description('The key of the patient');
-
-const sessionMiddleware = require('@arangodb/foxx/sessions');
-const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
 
 const ARANGO_NOT_FOUND = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
 const ARANGO_DUPLICATE = errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code;
@@ -35,7 +37,7 @@ module.exports = router;
 
 router.use(sessionMiddleware({
   storage: module.context.collection('sessions'),
-  transport: cookieTransport('keyboardcat')
+  transport: cookieTransport(['header', 'cookie'])
 }));
 
 router.tag('patient');
@@ -45,7 +47,6 @@ router.post('/login', function (req, res) {
   patient = patients.firstExample({ "_key": req.body.login });
   if (!patient)
     patient = patients.firstExample({ "email": req.body.login });
-
   const valid = auth.verify(
     patient ? patient.authData : {},
     req.body.password
@@ -161,11 +162,22 @@ router.post(restrict(permission.patients.create), function (req, res) {
   returns the saved document.
 `);
 
+router.get('/whoami', function (req, res) {
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  try {
+    const user = patients.firstExample("_id", req.session.uid);
+    res.send({ username: user._id });
+  } catch (e) {
+    res.send({ username: null });
+  }
+})
+  .description('Returns the currently active username.');
 
 router.get(':key', function (req, res) {
-  if (!hasPerm(req.user._id, permission.patients.view)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.patients.view, patientId)) res.throw(403, 'Forbidden');
   let patient
   try {
     patient = patients.document(key);
@@ -187,10 +199,11 @@ router.get(':key', function (req, res) {
 
 
 router.put(':key', function (req, res) {
-  if (!hasPerm(req.user._id, permission.patients.edit)) res.throw(403, 'Not authorized');
-  const super_admin = hasPerm(req.user._id, 'all');
+  const super_admin = hasPerm(req.session.uid, 'all');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.patients.edit, patientId)) res.throw(403, 'Forbidden');
   const patient = req.body;
   let meta;
   try {
@@ -229,10 +242,11 @@ router.put(':key', function (req, res) {
 
 
 router.patch(':key', function (req, res) {
-  if (!hasPerm(req.user, permission.patients.edit, patientId)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
-  const super_admin = hasPerm(req.user._id, 'all');
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.patients.edit, patientId)) res.throw(403, 'Forbidden');
+  const super_admin = hasPerm(req.session.uid, 'all');
   const patchData = req.body;
   let patient;
   try {
@@ -270,9 +284,10 @@ router.patch(':key', function (req, res) {
 
 
 router.delete(':key', function (req, res) {
-  if (!hasPerm(req.user, permission.patients.delete)) res.throw(403, 'Not authorized');
   const key = req.pathParams.key;
   const patientId = `${patients.name()}/${key}`;
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.patients.delete, patientId)) res.throw(403, 'Forbidden');
   for (const perm of perms.inEdges(patientId)) {
     perms.remove(perm);
   }
@@ -294,3 +309,61 @@ router.delete(':key', function (req, res) {
   .description(dd`
   Deletes a patient from the database.
 `);
+
+router.post('/logout', function (req, res) {
+  if (req.session.uid) {
+    req.session.uid = null;
+    req.sessionStorage.save(req.session);
+  }
+  res.send({success: true});
+})
+.description('Logs the current patient out.');
+
+router.post('/login_sqa', function (req, res) {
+  let patient = {};
+  patient = patients.firstExample({ "_key": req.body.login });
+  if (!patient)
+    patient = patients.firstExample({ "email": req.body.login });
+  let ok = false;
+  if (!patient.security_questions) res.throw(404);
+  for (var i = 0; i < patient.security_questions.length; i++) {
+      if (patient.security_questions[i].answer === req.body.answer) {
+          req.session.uid = member._id;
+          req.sessionStorage.save(req.session);
+          print(req.session)
+          res.send({ sucess: true });
+          ok = true;
+      }
+      str = str + i;
+  }
+  if (!ok) res.throw('unauthorized');
+})
+  .body(joi.object({
+      login: joi.string().required(),
+      answer: joi.string().required()
+  }).required(), 'Credentials')
+  .response(404, 'User has no sequrity questions.')
+  .description('Logs a registered staff member in.');
+
+  router.patch('/change_password', function (req, res) {
+    let patient = {};
+    patient = patients.firstExample({ "_key": req.session.uid });
+    if (!patient)
+      patient = patients.firstExample({ "email": req.session.uid });
+    const valid = auth.verify(
+        patient ? patient.authData : {},
+        req.body.current_password
+    );
+    if (!valid) res.throw(403);
+
+    patient.authData = auth.create(req.body.new_password);
+    patients.update(patient._key, patient);
+    res.send(200, { sucess: true });
+}, 'update')
+    .body(joi.object({
+        current_password: joi.string().required(),
+        new_password: joi.string().required()
+    }).required(), 'Credentials')
+    .response(200, 'Password changed successfully.')
+    .response(403, 'Bad credentials.')
+    .description('Change password');

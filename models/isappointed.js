@@ -1,17 +1,14 @@
 'use strict';
 const _ = require('lodash');
 const joi = require('joi');
-const Enumerators = require('../models/enumerators');
-
 
 module.exports = {
     schema: {
         // Describe the attributes with joi here
-        member: joi.string().required(),
-        leave_reason: joi.string().required(),
-        beginning_date: joi.date().required(),
-        ending_date: joi.date().required(),
-        status: joi.string().allow(Enumerators.leave_apply_status)
+        _key: joi.string(),
+        date: joi.date().required(),
+        description: joi.string(),
+        time: joi.string().regex(/^(?:\d|[01]\d|2[0-3]):[0-5]\d$/).required()
     },
     forClient(obj) {
         // Implement outgoing transformations here
