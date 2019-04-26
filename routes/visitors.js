@@ -7,6 +7,8 @@ const errors = require('@arangodb').errors;
 const createRouter = require('@arangodb/foxx/router');
 const sessionMiddleware = require('@arangodb/foxx/sessions');
 const cookieTransport = require('@arangodb/foxx/sessions/transports/cookie');
+const db = require('@arangodb').db;
+const aql = require('@arangodb').aql;
 
 const permission = require('../util/permissions');
 const restrict = require('../util/restrict');
@@ -75,45 +77,32 @@ router.post(function (req, res) {
   returns the saved document.
 `)
 
-router.get(':key', function (req, res) {
-  const key = req.pathParams.key;
+router.get('/facilities', function (req, res) {
   let facilities
-  try {
-    facilities = Facilities.document(key);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
-      throw httpError(HTTP_NOT_FOUND, e.message);
-    }
-    throw e;
-  }
+  facilities = Facilities.all();
   res.send(facilities);
-}, 'detail')
-.pathParam('key', keySchema)
-.response(Facilities, 'The fascility.')
-.summary('Fetch a fascility')
+}, 'list')
+.response([Facilities], 'The facilities.')
+.summary('List facilities')
 .description(dd `
-Retrieves a fascility by its key.
+Retrieves a facility list available in the clinic.
 `);
 
 router.get(':doctor_designation', function (req, res) {
     const doctor_designation = req.pathParams.doctor_designation;
-    // const key = req.pathParam.key;
-    let doctor
-    try {
-      doctor = Doctors.document(doctor_designation);
-    } catch (e) {
-      if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
-        throw httpError(HTTP_NOT_FOUND, e.message);
-      }
-      throw e;
-    }
-    res.send(doctor);
+    const doctors = db._query(aql`FOR s IN ${Doctors}
+      FILTER s.designation == "Doctor" AND s.doctor_designation == ${doctor_designation}
+     RETURN { 
+      first_name: s.first_name, 
+      last_name: s.last_name,
+      doctor_designation: s.doctor_designation
+  }`)
+  res.send(doctors);
   }, 'detail')
-  .pathParam('key', keySchema)
-  .response(Doctors, 'The designation.')
-  .summary('Fetch a doctor designation')
+  .response([Doctors], 'Doctors with specified designation')
+  .summary('Fetch doctors with specified designations')
   .description(dd `
-Retrieves a doctor by its key.
+Retrieves the doctors of one designation.
 `);
 
 
