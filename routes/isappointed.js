@@ -16,6 +16,7 @@ const IsAppointed = require('../models/isappointed');
 
 const isAppointedItems = module.context.collection('isAppointed');
 const staff = module.context.collection('Staff');
+const Appointments = module.context.collection('Appointments');
 
 const keySchema = joi.string().required()
     .description('The key of the isAppointed');
@@ -59,7 +60,9 @@ router.post(restrict(permission.appointments.create), function (req, res) {
     const isAppointed = req.body;
     let meta;
     try {
-        meta = isAppointedItems.save(`${Doctors.name()}/${isAppointed._from}`, `${Appointments.name()}/${isAppointed._to}`, isAppointed);
+        isAppointed._from = `${staff.name()}/${isAppointed._from}`;
+        isAppointed._to = `${Appointments.name()}/${isAppointed._to}`;
+        meta = isAppointedItems.save(isAppointed);
     } catch (e) {
         if (e.isArangoError && e.errorNum === ARANGO_DUPLICATE) {
             throw httpError(HTTP_CONFLICT, e.message);
@@ -107,13 +110,11 @@ router.get(':key', function (req, res) {
 
 
 router.get('/schedule', function (req, res) {
-    const doctor_key = req.pathParams.key;
-    const doctorId = `${Doctors.name()}/${doctor_key}`;
     if (!req.session.uid) res.throw(401, 'Unauthorized');
     if (!hasPerm(req.session.uid, permission.appointments.view)) res.throw(403, 'Forbidden');
     let isAppointed;
     try {
-        isAppointed = isAppointedItems.byExample( {'_from': doctorId} );
+        isAppointed = isAppointedItems.byExample( {'_from': req.session.uid} );
     } catch (e) {
         if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
             throw httpError(HTTP_NOT_FOUND, e.message);
@@ -122,9 +123,8 @@ router.get('/schedule', function (req, res) {
     }
     res.send(isAppointed);
 }, 'detail')
-    .pathParam('key', keySchema)
     .response([IsAppointed], 'The schedule')
-    .summary('Fetch an schedule of a specific doctor')
+    .summary('Fetch a schedule of a specific doctor')
     .description(dd`
   Retrieves a schedule by key of a doctor.
 `);
@@ -137,8 +137,8 @@ router.put(function (req, res) {
     const isAppointed = req.body;
     let meta;
     try {
-        const user = staff.byExample( {'_id': req.session.uid} );
-        meta = isAppointedItems.replace(user.key, isAppointed);
+        const user = staff.firstExample( {"_id": req.session.uid} );
+        meta = isAppointedItems.replace(user._key, isAppointed);
     } catch (e) {
         if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
             throw httpError(HTTP_NOT_FOUND, e.message);
@@ -162,15 +162,15 @@ router.put(function (req, res) {
 
 router.patch(function (req, res) {
     const key = req.pathParams.key;
-    const appointmentId = `${appointments.name()}/${key}`;
+    const appointmentId = `${Appointments.name()}/${key}`;
     if (!req.session.uid) res.throw(401, 'Unauthorized');
     if (!hasPerm(req.session.uid, permission.appointments.edit, appointmentId)) res.throw(403, 'Forbidden');
     const patchData = req.body;
     let isAppointed;
     try {
-        const user = staff.byExample( {'_id': req.session.uid} );
-        isAppointedItems.update(user.key, patchData);
-        isAppointed = isAppointedItems.document(user.key);
+        const user = staff.firstExample( {"_id": req.session.uid} );
+        isAppointedItems.update(user._key, patchData);
+        isAppointed = isAppointedItems.document(user._key);
     } catch (e) {
         if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
             throw httpError(HTTP_NOT_FOUND, e.message);
