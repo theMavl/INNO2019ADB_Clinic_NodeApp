@@ -10,7 +10,9 @@ const collections = [
   "Staff",
   "Tips",
   "Visitors",
-  "Usergroups",
+  "Addresses",
+  "users",
+  "usergroups",
   "hasPerm",
   "memberOf"
 ];
