@@ -16,6 +16,7 @@ const LeaveApply = require('../models/leaveapply');
 const Enumerators = require('../models/enumerators');
 
 const LeaveApplyItems = module.context.collection('LeaveApply');
+const perms = module.context.collection('hasPerm');
 
 const keySchema = joi.string().required()
     .description('The key of the leaveApply');
@@ -30,17 +31,15 @@ const router = createRouter();
 module.exports = router;
 
 router.use(sessionMiddleware({
-  storage: module.context.collection('sessions'),
-  transport: cookieTransport(['header', 'cookie'])
+    storage: module.context.collection('sessions'),
+    transport: cookieTransport(['header', 'cookie'])
 }));
 
 router.tag('leaveApply');
 
 
-router.get(function (req, res) {
-  if (!req.session.uid) res.throw(401, 'Unauthorized');
-  if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
-  res.send(LeaveApplyItems.all());
+router.get(restrict(permission.leave_applies.view), function (req, res) {
+    res.send(LeaveApplyItems.all());
 }, 'list')
     .response([LeaveApply], 'A list of LeaveApplyItems.')
     .summary('List all LeaveApplyItems')
@@ -49,37 +48,37 @@ router.get(function (req, res) {
 `);
 
 
-router.post(function (req, res) {
-    if (!req.session.uid) res.throw(401, 'Unauthorized');
-    if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
+router.post(restrict(permission.leave_applies.create), function (req, res) {
     const new_apply = req.body;
     try {
+        new_apply.member = req.session.uid;
+        new_apply.status = 'New';
         const meta = LeaveApplyItems.save(new_apply);
         Object.assign(new_apply, meta);
     } catch (e) {
         res.throw('bad request', 'Apply already exists!', e);
     }
 
-    const valid = (req.session.uid === req.body.member);
-    if (!valid) res.throw('unauthorized');
-
     req.session.uid = new_apply._id;
     req.sessionStorage.save(req.session);
+
+    perms.save({ _from: req.session.uid, _to: new_apply._id, name: permission.leave_applies.view });
+    perms.save({ _from: req.session.uid, _to: new_apply._id, name: permission.leave_applies.edit });
+    perms.save({ _from: req.session.uid, _to: new_apply._id, name: permission.leave_applies.cancel });
     res.send({success: true, apply_id: new_apply._key});
 }).body(joi.object({
-    member: joi.string().required(),
     leave_reason: joi.string().required(),
     beginning_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
-    ending_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required(),
-    status: joi.string().allow(Enumerators.leave_apply_status)
+    ending_date: joi.string().regex(/^\d{4}-\d{2}-\d{2}$/).required()
 }).required(), 'Body').description('Creates new LeaveApply');
 
 
 router.get(':key', function (req, res) {
-    if (!req.session.uid) res.throw(401, 'Unauthorized');
-    if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
-    let leaveApply
+    let leaveApply;
+    const applyID = `${LeaveApplyItems.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.view, applyID)) res.throw(403, 'Forbidden');
     try {
         leaveApply = LeaveApplyItems.document(key);
     } catch (e) {
@@ -99,10 +98,11 @@ router.get(':key', function (req, res) {
 
 
 router.put(':key', function (req, res) {
-    if (!req.session.uid) res.throw(401, 'Unauthorized');
-    if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
     const leaveApply = req.body;
+    const applyID = `${LeaveApplyItems.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.edit, applyID)) res.throw(403, 'Forbidden');
     let meta;
     try {
         meta = LeaveApplyItems.replace(key, leaveApply);
@@ -129,29 +129,30 @@ router.put(':key', function (req, res) {
 
 
 router.patch(':key', function (req, res) {
-  if (!req.session.uid) res.throw(401, 'Unauthorized');
-  if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
-  const key = req.pathParams.key;
-  let apply;
-  try {
-    apply = LeaveApplyItems.document(key);
-    apply.status = req.body.status;
-    LeaveApplyItems.update(key, apply);
-    apply = LeaveApplyItems.document(key);
-  } catch (e) {
-    if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
-      throw httpError(HTTP_NOT_FOUND, e.message);
+    const key = req.pathParams.key;
+    let apply;
+    const applyID = `${LeaveApplyItems.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.edit, applyID)) res.throw(403, 'Forbidden');
+    try {
+        apply = LeaveApplyItems.document(key);
+        apply.status = req.body.status;
+        LeaveApplyItems.update(key, apply);
+        apply = LeaveApplyItems.document(key);
+    } catch (e) {
+        if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
+            throw httpError(HTTP_NOT_FOUND, e.message);
+        }
+        if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
+            throw httpError(HTTP_CONFLICT, e.message);
+        }
+        throw e;
     }
-    if (e.isArangoError && e.errorNum === ARANGO_CONFLICT) {
-      throw httpError(HTTP_CONFLICT, e.message);
-    }
-    throw e;
-  }
-  res.send(apply);
+    res.send(apply);
 }, 'replace')
     .pathParam('key', keySchema)
     .body(joi.object({
-      status: joi.string().valid(Enumerators.reviewed_leave_apply_status).required()
+        status: joi.string().valid(Enumerators.reviewed_leave_apply_status).required()
     }).required(), 'Status')
     .response(LeaveApply, 'The updated leaveApply.')
     .summary('Update a leaveApply')
@@ -162,9 +163,10 @@ router.patch(':key', function (req, res) {
 
 
 router.delete(':key', function (req, res) {
-    if (!req.session.uid) res.throw(401, 'Unauthorized');
-    if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
+    const applyID = `${LeaveApplyItems.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.delete, applyID)) res.throw(403, 'Forbidden');
     try {
         LeaveApplyItems.remove(key);
     } catch (e) {
