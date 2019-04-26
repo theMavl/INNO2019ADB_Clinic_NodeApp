@@ -15,6 +15,7 @@ const permission = require('../util/permissions');
 const IsAppointed = require('../models/isappointed');
 
 const isAppointedItems = module.context.collection('isAppointed');
+const staff = module.context.collection('Staff');
 
 const keySchema = joi.string().required()
     .description('The key of the isAppointed');
@@ -105,10 +106,11 @@ router.get(':key', function (req, res) {
 `);
 
 
-router.get(':key/doctor', function (req, res) {
+router.get('/schedule', function (req, res) {
     const doctor_key = req.pathParams.key;
     const doctorId = `${Doctors.name()}/${doctor_key}`;
-    if (!hasPerm(doctorId, permission.appointments.view)) res.throw(403, 'Not authorized');
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.appointments.view)) res.throw(403, 'Forbidden');
     let isAppointed;
     try {
         isAppointed = isAppointedItems.byExample( {'_from': doctorId} );
@@ -128,14 +130,15 @@ router.get(':key/doctor', function (req, res) {
 `);
 
 
-router.put(':key', function (req, res) {
+router.put(function (req, res) {
     if (!req.session.uid) res.throw(401, 'Unauthorized');
     if (!hasPerm(req.session.uid, permission.appointments.edit)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
     const isAppointed = req.body;
     let meta;
     try {
-        meta = isAppointedItems.replace(key, isAppointed);
+        const user = staff.byExample( {'_id': req.session.uid} );
+        meta = isAppointedItems.replace(user.key, isAppointed);
     } catch (e) {
         if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
             throw httpError(HTTP_NOT_FOUND, e.message);
@@ -148,7 +151,6 @@ router.put(':key', function (req, res) {
     Object.assign(isAppointed, meta);
     res.send(isAppointed);
 }, 'replace')
-    .pathParam('key', keySchema)
     .body(IsAppointed, 'The data to replace the isAppointed with.')
     .response(IsAppointed, 'The new isAppointed.')
     .summary('Replace an isAppointed')
@@ -158,7 +160,7 @@ router.put(':key', function (req, res) {
 `);
 
 
-router.patch(':key', function (req, res) {
+router.patch(function (req, res) {
     const key = req.pathParams.key;
     const appointmentId = `${appointments.name()}/${key}`;
     if (!req.session.uid) res.throw(401, 'Unauthorized');
@@ -166,8 +168,9 @@ router.patch(':key', function (req, res) {
     const patchData = req.body;
     let isAppointed;
     try {
-        isAppointedItems.update(key, patchData);
-        isAppointed = isAppointedItems.document(key);
+        const user = staff.byExample( {'_id': req.session.uid} );
+        isAppointedItems.update(user.key, patchData);
+        isAppointed = isAppointedItems.document(user.key);
     } catch (e) {
         if (e.isArangoError && e.errorNum === ARANGO_NOT_FOUND) {
             throw httpError(HTTP_NOT_FOUND, e.message);
@@ -179,8 +182,7 @@ router.patch(':key', function (req, res) {
     }
     res.send(isAppointed);
 }, 'update')
-    .pathParam('key', keySchema)
-    .body(joi.object().description('The data to update the isAppointed with.'))
+    .body(IsAppointed, 'The data to update the isAppointed with.')
     .response(IsAppointed, 'The updated isAppointed.')
     .summary('Update an isAppointed')
     .description(dd`

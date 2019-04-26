@@ -57,9 +57,12 @@ router.post(restrict(permission.leave_applies.create), function (req, res) {
     } catch (e) {
         res.throw('bad request', 'Apply already exists!', e);
     }
+
+    const valid = (req.session.uid === req.body.member);
+    if (!valid) res.throw('unauthorized');
+
     req.session.uid = new_apply._id;
     req.sessionStorage.save(req.session);
-
     res.send({success: true, apply_id: new_apply._key});
 }).body(joi.object({
     leave_reason: joi.string().required(),
