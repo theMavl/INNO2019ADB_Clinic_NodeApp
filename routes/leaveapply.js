@@ -71,9 +71,12 @@ router.post(restrict(permission.leave_applies.create), function (req, res) {
 }).required(), 'Body').description('Creates new LeaveApply');
 
 
-router.get(':key', restrict(permission.leave_applies.view), function (req, res) {
+router.get(':key', function (req, res) {
     const key = req.pathParams.key;
-    let leaveApply
+    let leaveApply;
+    const applyID = `${LeaveApplyItems.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.view, applyID)) res.throw(403, 'Forbidden');
     try {
         leaveApply = LeaveApplyItems.document(key);
     } catch (e) {
@@ -92,9 +95,12 @@ router.get(':key', restrict(permission.leave_applies.view), function (req, res) 
 `);
 
 
-router.put(':key',restrict(permission.leave_applies.edit), function (req, res) {
+router.put(':key', function (req, res) {
     const key = req.pathParams.key;
     const leaveApply = req.body;
+    const applyID = `${LeaveApplyItems.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.edit, applyID)) res.throw(403, 'Forbidden');
     let meta;
     try {
         meta = LeaveApplyItems.replace(key, leaveApply);
@@ -120,9 +126,12 @@ router.put(':key',restrict(permission.leave_applies.edit), function (req, res) {
 `);
 
 
-router.patch(':key', restrict(permission.leave_applies.edit),function (req, res) {
+router.patch(':key', function (req, res) {
     const key = req.pathParams.key;
     let apply;
+    const applyID = `${LeaveApplyItems.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.edit, applyID)) res.throw(403, 'Forbidden');
     try {
         apply = LeaveApplyItems.document(key);
         apply.status = req.body.status;
@@ -151,8 +160,11 @@ router.patch(':key', restrict(permission.leave_applies.edit),function (req, res)
 `);
 
 
-router.delete(':key',restrict(permission.leave_applies.delete), function (req, res) {
+router.delete(':key', function (req, res) {
     const key = req.pathParams.key;
+    const applyID = `${LeaveApplyItems.name()}/${key}`;
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.delete, applyID)) res.throw(403, 'Forbidden');
     try {
         LeaveApplyItems.remove(key);
     } catch (e) {
