@@ -37,7 +37,9 @@ router.use(sessionMiddleware({
 router.tag('leaveApply');
 
 
-router.get(restrict(permission.leave_applies.view), function (req, res) {
+router.get(function (req, res) {
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
   res.send(LeaveApplyItems.all());
 }, 'list')
     .response([LeaveApply], 'A list of LeaveApplyItems.')
@@ -48,6 +50,8 @@ router.get(restrict(permission.leave_applies.view), function (req, res) {
 
 
 router.post(function (req, res) {
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
     const new_apply = req.body;
     try {
         const meta = LeaveApplyItems.save(new_apply);
@@ -72,6 +76,8 @@ router.post(function (req, res) {
 
 
 router.get(':key', function (req, res) {
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
     let leaveApply
     try {
@@ -93,6 +99,8 @@ router.get(':key', function (req, res) {
 
 
 router.put(':key', function (req, res) {
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
     const leaveApply = req.body;
     let meta;
@@ -121,6 +129,8 @@ router.put(':key', function (req, res) {
 
 
 router.patch(':key', function (req, res) {
+  if (!req.session.uid) res.throw(401, 'Unauthorized');
+  if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
   const key = req.pathParams.key;
   let apply;
   try {
@@ -152,6 +162,8 @@ router.patch(':key', function (req, res) {
 
 
 router.delete(':key', function (req, res) {
+    if (!req.session.uid) res.throw(401, 'Unauthorized');
+    if (!hasPerm(req.session.uid, permission.leave_applies.edit)) res.throw(403, 'Forbidden');
     const key = req.pathParams.key;
     try {
         LeaveApplyItems.remove(key);
