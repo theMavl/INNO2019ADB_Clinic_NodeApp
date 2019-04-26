@@ -91,7 +91,7 @@ Retrieves a facility list available in the clinic.
 router.get(':doctor_designation', function (req, res) {
     const doctor_designation = req.pathParams.doctor_designation;
     const doctors = db._query(aql`FOR s IN ${Doctors}
-      FILTER s.designation == "Doctor" AND s.doctor_designation == ${doctor_designation}
+      FILTER s.designation == "doctor" AND s.doctor_designation == ${doctor_designation}
      RETURN { 
       first_name: s.first_name, 
       last_name: s.last_name,
